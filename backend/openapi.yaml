@@ -1,0 +1,114 @@
+openapi: 3.1.0
+info:
+  title: neneen API
+  version: 1.0.0
+  description: API communautaire neneen à Dakar. Les montants sont en FCFA (XOF).
+servers:
+  - url: http://localhost:4000/api
+security:
+  - bearerAuth: []
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    Error:
+      type: object
+      required: [message]
+      properties:
+        message: { type: string }
+paths:
+  /health:
+    get:
+      security: []
+      summary: État de l’API
+      responses: { '200': { description: OK } }
+  /auth/register:
+    post:
+      security: []
+      summary: Créer un compte et recevoir un lien de vérification
+      responses: { '201': { description: Session créée } }
+  /auth/login:
+    post:
+      security: []
+      summary: Connexion
+      responses: { '200': { description: Access token et cookie refresh } }
+  /auth/refresh:
+    post:
+      security: []
+      summary: Renouveler une session
+      responses: { '200': { description: Session renouvelée } }
+  /auth/logout:
+    post:
+      security: []
+      summary: Révoquer le refresh token
+      responses: { '200': { description: Déconnexion } }
+  /auth/forgot-password:
+    post:
+      security: []
+      summary: Demander un lien de réinitialisation
+      responses: { '200': { description: Réponse neutre } }
+  /auth/reset-password:
+    post:
+      security: []
+      summary: Réinitialiser le mot de passe
+      responses: { '200': { description: Mot de passe modifié } }
+  /auth/verify-email:
+    post:
+      security: []
+      summary: Vérifier l’e-mail
+      responses: { '200': { description: Adresse vérifiée } }
+  /activities:
+    get:
+      security: []
+      summary: Activités publiées
+      responses: { '200': { description: Liste } }
+  /activities/search:
+    get:
+      security: []
+      summary: Recherche, filtre et pagination
+      parameters:
+        - { in: query, name: page, schema: { type: integer, minimum: 1 } }
+        - { in: query, name: limit, schema: { type: integer, minimum: 1, maximum: 100 } }
+        - { in: query, name: type, schema: { type: string, enum: [EXCURSION, AFTERWORK, EVENT] } }
+        - { in: query, name: search, schema: { type: string } }
+      responses: { '200': { description: Liste } }
+  /products:
+    get:
+      security: []
+      summary: Produits actifs
+      responses: { '200': { description: Liste } }
+  /bookings:
+    get:
+      summary: Mes réservations
+      responses: { '200': { description: Liste } }
+    post:
+      summary: Réserver des places temporairement
+      responses: { '201': { description: Réservation en attente } }
+  /orders:
+    get:
+      summary: Mes commandes
+      responses: { '200': { description: Liste } }
+    post:
+      summary: Créer une commande
+      responses: { '201': { description: Commande en attente } }
+  /payments:
+    post:
+      summary: Initier un paiement idempotent
+      responses: { '201': { description: Lien de paiement ou paiement en espèces } }
+  /payments/webhook:
+    post:
+      security: []
+      summary: Callback PayDunya signé et revérifié
+      responses: { '200': { description: Reçu } }
+  /admin/dashboard:
+    get:
+      summary: Indicateurs admin
+      responses: { '200': { description: Indicateurs } }
+  /newsletter:
+    post:
+      security: []
+      summary: Inscription à la newsletter
+      responses: { '201': { description: Inscription enregistrée } }

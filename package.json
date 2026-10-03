@@ -1,0 +1,35 @@
+{
+  "name": "neneen",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "workspaces": [
+    "backend",
+    "frontend",
+    "shared/contracts"
+  ],
+  "scripts": {
+    "dev": "concurrently -k -n API,WEB -c yellow,cyan \"npm:dev:backend\" \"npm:dev:frontend\"",
+    "dev:backend": "npm --prefix backend run dev",
+    "dev:frontend": "npm --prefix frontend run dev",
+    "build": "npm --workspace @neneen/contracts run build && npm --prefix backend run build && npm --prefix frontend run build",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write \"backend/src/**/*.ts\" \"backend/prisma/**/*.ts\" \"frontend/src/**/*.{ts,tsx,css}\" \"frontend/*.ts\" \"shared/contracts/**/*.ts\" package.json .prettierrc.json backend/package.json backend/tsconfig.json frontend/package.json frontend/tsconfig.json frontend/tsconfig.app.json frontend/tsconfig.node.json shared/contracts/package.json shared/contracts/tsconfig.json README.md eslint.config.js",
+    "format:check": "prettier --check \"backend/src/**/*.ts\" \"backend/prisma/**/*.ts\" \"frontend/src/**/*.{ts,tsx,css}\" \"frontend/*.ts\" \"shared/contracts/**/*.ts\" package.json .prettierrc.json backend/package.json backend/tsconfig.json frontend/package.json frontend/tsconfig.json frontend/tsconfig.app.json frontend/tsconfig.node.json shared/contracts/package.json shared/contracts/tsconfig.json README.md eslint.config.js",
+    "db:generate": "npm --prefix backend run db:generate",
+    "db:migrate": "npm --prefix backend run db:migrate",
+    "db:deploy": "npm --prefix backend run db:deploy",
+    "db:seed": "npm --prefix backend run db:seed",
+    "test": "npm --workspace neneen-backend test"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.1",
+    "concurrently": "^9.2.1",
+    "eslint": "^9.39.1",
+    "eslint-plugin-react-hooks": "^7.0.1",
+    "globals": "^16.5.0",
+    "prettier": "^3.6.2",
+    "typescript-eslint": "^8.46.2"
+  }
+}
