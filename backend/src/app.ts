@@ -19,6 +19,10 @@ import { uploadRouter } from './domains/uploads/routes.js'
 export const app = express()
 app.disable('x-powered-by')
 app.set('trust proxy', env.TRUST_PROXY_HOPS)
+app.use((_req, res, next) => {
+  res.removeHeader('Permissions-Policy')
+  next()
+})
 app.use((req, res, next) => {
   const start = performance.now()
   res.on('finish', () =>
