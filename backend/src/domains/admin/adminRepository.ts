@@ -244,4 +244,24 @@ export const adminRepository = {
   setMessageStatus(id: string, status: 'NEW' | 'READ' | 'REPLIED') {
     return prisma.contactMessage.update({ where: { id }, data: { status } })
   },
+  replyMessage(id: string, replyText: string) {
+    return prisma.contactMessage.update({
+      where: { id },
+      data: { status: 'REPLIED', replyText },
+    })
+  },
+  deleteProduct(id: string) {
+    return prisma.$transaction(async (tx) => {
+      await tx.productVariant.deleteMany({ where: { productId: id } })
+      await tx.cartItem.deleteMany({ where: { productId: id } })
+      return tx.product.delete({ where: { id } })
+    })
+  },
+  deleteActivity(id: string) {
+    return prisma.$transaction(async (tx) => {
+      await tx.booking.deleteMany({ where: { activityId: id } })
+      await tx.waitlist.deleteMany({ where: { activityId: id } })
+      return tx.activity.delete({ where: { id } })
+    })
+  },
 }

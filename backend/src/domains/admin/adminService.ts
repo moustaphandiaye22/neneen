@@ -77,3 +77,8 @@ export const listerOptionsProduit = () => adminRepository.listProductOptions()
 export const obtenirParametres = () => adminRepository.getSiteSettings()
 export const modifierParametres = (input: Prisma.SiteSettingsUpdateInput) =>
   adminRepository.updateSiteSettings(input)
+
+export const supprimerProduit = (id: string) => adminRepository.deleteProduct(id)
+export const supprimerActivite = (id: string) => adminRepository.deleteActivity(id)
+export const repondreMessage = (id: string, replyText: string) =>
+  adminRepository.replyMessage(id, replyText)

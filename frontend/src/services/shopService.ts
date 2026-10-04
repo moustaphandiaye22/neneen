@@ -2,10 +2,11 @@ import { commandeSchema } from '@neneen/contracts'
 import type { Product } from '../types'
 import { api } from './api'
 import { validerAvec } from './validation'
+import { withProductImage } from '../lib/productImages'
 
 export async function listerProduits() {
   const result = await api<{ products: Product[] }>('/products', null)
-  return result.products
+  return result.products.map(withProductImage)
 }
 
 export function passerCommande(input: unknown, token: string) {

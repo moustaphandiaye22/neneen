@@ -51,9 +51,8 @@ export function useCart(
         )
         setSynced(true)
       })
-      .catch((reason) => {
-        hydrationStarted.current = false
-        onError((reason as Error).message)
+      .catch(() => {
+        setSynced(true)
       })
   }, [token, products, synced, cart, onError])
 

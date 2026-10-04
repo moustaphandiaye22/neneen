@@ -182,16 +182,22 @@ export async function saveCart(
           items,
         )
       : mergeCartLines([], items)
+    const sanitizedLines: { productId: string; size: string; quantity: number }[] = []
     for (const line of lines) {
       const variant = await tx.productVariant.findUnique({
         where: { productId_size: { productId: line.productId, size: line.size } },
         include: { product: true },
       })
-      if (!variant || !variant.product.active || variant.stock < line.quantity)
-        throw httpError(409, 'Un article du panier n’est plus disponible dans cette quantité.')
+      if (!variant || !variant.product.active || variant.stock <= 0) continue
+      const quantity = Math.min(line.quantity, variant.stock)
+      if (quantity > 0) {
+        sanitizedLines.push({ productId: line.productId, size: line.size, quantity })
+      }
     }
     await tx.cartItem.deleteMany({ where: { cartId: cart.id } })
-    await tx.cartItem.createMany({ data: lines.map((line) => ({ ...line, cartId: cart.id })) })
+    await tx.cartItem.createMany({
+      data: sanitizedLines.map((line) => ({ ...line, cartId: cart.id })),
+    })
     return tx.cart.findUniqueOrThrow({ where: { id: cart.id }, include: { items: true } })
   })
 }

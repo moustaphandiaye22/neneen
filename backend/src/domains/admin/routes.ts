@@ -45,6 +45,7 @@ adminRouter.patch('/settings', requireAdmin, async (req, res) => {
       address: z.string().trim().max(160),
       instagramUrl: z.string().trim().url().or(z.literal('')),
       facebookUrl: z.string().trim().url().or(z.literal('')),
+      tiktokUrl: z.string().trim().url().or(z.literal('')),
       paymentsLive: z.boolean(),
     })
     .parse(req.body)
@@ -125,10 +126,22 @@ adminRouter.patch('/orders/:id', async (req, res) => {
   res.json({ order })
 })
 
+adminRouter.delete('/activities/:id/delete', async (req, res) => {
+  res.json({ activity: await adminService.supprimerActivite(req.params.id) })
+})
+
+adminRouter.delete('/products/:id/delete', async (req, res) => {
+  res.json({ product: await adminService.supprimerProduit(req.params.id) })
+})
+
 adminRouter.get('/messages', async (_req, res) =>
   res.json({ messages: await adminService.listerMessages() }),
 )
 adminRouter.patch('/messages/:id', async (req, res) => {
   const { status } = etatMessageSchema.parse(req.body)
   res.json({ message: await adminService.changerEtatMessage(req.params.id, status) })
+})
+adminRouter.post('/messages/:id/reply', async (req, res) => {
+  const { replyText } = z.object({ replyText: z.string().min(1) }).parse(req.body)
+  res.json({ message: await adminService.repondreMessage(req.params.id, replyText) })
 })

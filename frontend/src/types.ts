@@ -24,6 +24,7 @@ export type Activity = {
   reserved: number
   status: string
   imageUrl?: string
+  gallery?: string[]
   featured?: boolean
   variants?: { size: string; stock: number }[]
 }

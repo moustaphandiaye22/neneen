@@ -5,3 +5,13 @@
 !**/.env.example
 .git
 *.log
+.kilo
+.codex
+.agents
+.aws
+.github
+**/coverage
+**/*.tsbuildinfo
+**/*.pem
+**/*.key
+.vercel/

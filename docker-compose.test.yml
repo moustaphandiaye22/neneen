@@ -1,0 +1,23 @@
+# Use only alongside docker-compose.yml, with BACKEND_ENV_FILE=tests/deployment/backend.env.
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: neneen
+      POSTGRES_PASSWORD: neneen-test-only
+      POSTGRES_DB: neneen_test
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U neneen -d neneen_test']
+      interval: 2s
+      timeout: 3s
+      retries: 30
+  migrate:
+    depends_on:
+      db:
+        condition: service_healthy
+  api:
+    restart: 'no'
+  web:
+    restart: 'no'

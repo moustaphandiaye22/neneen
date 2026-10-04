@@ -5,7 +5,16 @@ import tseslint from 'typescript-eslint'
 
 export default tseslint.config(
   {
-    ignores: ['**/node_modules/**', '**/dist/**', '**/.env*', 'frontend/src/assets/**'],
+    ignores: [
+      '.vercel/**',
+      '.kilo/**',
+      '.codex/**',
+      '.agents/**',
+      '**/node_modules/**',
+      '**/dist/**',
+      '**/.env*',
+      'frontend/src/assets/**',
+    ],
   },
   eslint.configs.recommended,
   ...tseslint.configs.recommended,
@@ -25,7 +34,7 @@ export default tseslint.config(
     rules: { ...reactHooks.configs.flat.recommended.rules },
   },
   {
-    files: ['backend/**/*.ts', 'shared/**/*.ts'],
+    files: ['backend/**/*.ts', 'shared/**/*.ts', 'tests/**/*.mjs', 'scripts/**/*.mjs'],
     languageOptions: { globals: globals.node },
   },
   {

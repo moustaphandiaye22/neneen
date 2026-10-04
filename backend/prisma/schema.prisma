@@ -167,6 +167,7 @@ model ContactMessage {
   email     String
   message   String
   status    String   @default("NEW")
+  replyText String?
   createdAt DateTime @default(now())
 }
 
@@ -334,9 +335,11 @@ model SiteSettings {
   address       String   @default("Dakar, Sénégal")
   instagramUrl  String   @default("")
   facebookUrl   String   @default("")
+  tiktokUrl     String   @default("")
   paymentsLive  Boolean  @default(false)
   updatedAt     DateTime @updatedAt
 }
+
 
 model ProductColorOption {
   id        String   @id @default(cuid())

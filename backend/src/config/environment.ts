@@ -26,6 +26,7 @@ const environmentSchema = z
         'Une URL PostgreSQL est requise.',
       ),
     JWT_SECRET: z.string().min(32),
+    TRUST_PROXY_HOPS: z.coerce.number().int().min(0).max(5).default(0),
     PORT: z.coerce.number().int().min(1).max(65535).default(4000),
     FRONTEND_URL: z
       .string()

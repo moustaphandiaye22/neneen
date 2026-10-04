@@ -1,7 +1,16 @@
 import { useState } from 'react'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { connexionSchema, inscriptionSchema } from '@neneen/contracts'
-import { ArrowRight, Eye, EyeOff } from 'lucide-react'
+import {
+  AlertCircle,
+  ArrowRight,
+  Eye,
+  EyeOff,
+  Lock,
+  Mail,
+  Phone,
+  User as UserIcon,
+} from 'lucide-react'
 import { useForm } from 'react-hook-form'
 import type { z } from 'zod'
 import { connecter, creerCompte } from '../../services/authService'
@@ -22,9 +31,13 @@ export function AccountForms({
 }) {
   const [mode, setMode] = useState<Mode>('login')
   const [showPassword, setShowPassword] = useState(false)
-  const login = useForm<z.input<typeof connexionSchema>>({ resolver: zodResolver(connexionSchema) })
+  const login = useForm<z.input<typeof connexionSchema>>({
+    resolver: zodResolver(connexionSchema),
+    mode: 'onTouched',
+  })
   const register = useForm<z.input<typeof inscriptionSchema>>({
     resolver: zodResolver(inscriptionSchema),
+    mode: 'onTouched',
   })
 
   function switchMode(nextMode: Mode) {
@@ -58,10 +71,15 @@ export function AccountForms({
     }
   })
 
+  const firstNameError = register.formState.errors.firstName?.message
+  const lastNameError = register.formState.errors.lastName?.message
+  const phoneError = register.formState.errors.phone?.message
+
   const emailError =
     mode === 'login'
       ? login.formState.errors.email?.message
       : register.formState.errors.email?.message
+
   const passwordError =
     mode === 'login'
       ? login.formState.errors.password?.message
@@ -76,7 +94,7 @@ export function AccountForms({
           aria-pressed={mode === 'login'}
           onClick={() => switchMode('login')}
         >
-          Connexion
+          Se connecter
         </button>
         <button
           type="button"
@@ -87,6 +105,7 @@ export function AccountForms({
           Créer un compte
         </button>
       </div>
+
       <form
         key={mode}
         className="auth-form"
@@ -96,116 +115,130 @@ export function AccountForms({
         {mode === 'register' && (
           <div className="field-pair">
             <label className="form-label">
-              Prénom
+              <span>
+                <UserIcon size={14} /> Prénom
+              </span>
               <input
                 autoComplete="given-name"
-                placeholder="Votre prénom"
-                aria-invalid={Boolean(register.formState.errors.firstName)}
-                aria-describedby={
-                  register.formState.errors.firstName ? 'auth-first-name-error' : undefined
-                }
+                placeholder="Ex : Moustapha"
+                aria-invalid={Boolean(firstNameError)}
                 {...register.register('firstName')}
               />
-              {register.formState.errors.firstName?.message && (
-                <small id="auth-first-name-error" role="alert">
-                  {register.formState.errors.firstName.message}
-                </small>
+              {firstNameError && (
+                <span className="field-error" role="alert">
+                  <AlertCircle size={13} /> {firstNameError}
+                </span>
               )}
             </label>
+
             <label className="form-label">
-              Nom
+              <span>
+                <UserIcon size={14} /> Nom
+              </span>
               <input
                 autoComplete="family-name"
-                placeholder="Votre nom"
-                aria-invalid={Boolean(register.formState.errors.lastName)}
-                aria-describedby={
-                  register.formState.errors.lastName ? 'auth-last-name-error' : undefined
-                }
+                placeholder="Ex : Ndiaye"
+                aria-invalid={Boolean(lastNameError)}
                 {...register.register('lastName')}
               />
-              {register.formState.errors.lastName?.message && (
-                <small id="auth-last-name-error" role="alert">
-                  {register.formState.errors.lastName.message}
-                </small>
+              {lastNameError && (
+                <span className="field-error" role="alert">
+                  <AlertCircle size={13} /> {lastNameError}
+                </span>
               )}
             </label>
           </div>
         )}
+
         <label className="form-label">
-          Adresse e-mail
+          <span>
+            <Mail size={14} /> Adresse e-mail
+          </span>
           <input
             type="email"
             inputMode="email"
             autoComplete="email"
-            placeholder="nom@exemple.com"
+            placeholder="votre.email@exemple.com"
             aria-invalid={Boolean(emailError)}
-            aria-describedby={emailError ? 'auth-email-error' : undefined}
             {...(mode === 'login' ? login.register('email') : register.register('email'))}
           />
           {emailError && (
-            <small id="auth-email-error" role="alert">
-              {emailError}
-            </small>
+            <span className="field-error" role="alert">
+              <AlertCircle size={13} /> {emailError}
+            </span>
           )}
         </label>
+
         {mode === 'register' && (
           <label className="form-label">
-            Téléphone WhatsApp
+            <span>
+              <Phone size={14} /> Téléphone WhatsApp
+            </span>
             <input
               type="tel"
               inputMode="tel"
               autoComplete="tel"
               placeholder="+221 77 000 00 00"
-              aria-invalid={Boolean(register.formState.errors.phone)}
-              aria-describedby={register.formState.errors.phone ? 'auth-phone-error' : undefined}
+              aria-invalid={Boolean(phoneError)}
               {...register.register('phone')}
             />
-            {register.formState.errors.phone?.message && (
-              <small id="auth-phone-error" role="alert">
-                {register.formState.errors.phone.message}
-              </small>
+            {phoneError && (
+              <span className="field-error" role="alert">
+                <AlertCircle size={13} /> {phoneError}
+              </span>
             )}
           </label>
         )}
+
         <div className="form-label">
-          <label htmlFor="auth-password">Mot de passe</label>
-          <span className="password-field">
+          <label
+            htmlFor="auth-password"
+            style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+          >
+            <Lock size={14} /> Mot de passe
+          </label>
+          <div className="password-field-wrapper">
             <input
               id="auth-password"
               type={showPassword ? 'text' : 'password'}
               autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
               placeholder={mode === 'login' ? 'Votre mot de passe' : '6 caractères minimum'}
               aria-invalid={Boolean(passwordError)}
-              aria-describedby={passwordError ? 'auth-password-error' : undefined}
               {...(mode === 'login' ? login.register('password') : register.register('password'))}
             />
             <button
               type="button"
+              className="toggle-password-btn"
               onClick={() => setShowPassword((visible) => !visible)}
               aria-label={showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
-              aria-pressed={showPassword}
             >
               {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
             </button>
-          </span>
+          </div>
           {passwordError && (
-            <small id="auth-password-error" role="alert">
-              {passwordError}
-            </small>
+            <span className="field-error" role="alert">
+              <AlertCircle size={13} /> {passwordError}
+            </span>
           )}
         </div>
+
         {mode === 'login' && (
-          <a className="auth-forgot-link" href="#/forgot-password">
-            Mot de passe oublié ?
-          </a>
+          <div className="auth-actions-row">
+            <a className="auth-forgot-link" href="#/forgot-password">
+              Mot de passe oublié ?
+            </a>
+          </div>
         )}
+
         <button className="button button-dark full-button auth-submit" disabled={busy}>
-          {busy ? 'Veuillez patienter…' : mode === 'login' ? 'Me connecter' : 'Créer mon compte'}
+          {busy ? 'Traitement en cours…' : mode === 'login' ? 'Me connecter' : 'Créer mon compte'}
           {!busy && <ArrowRight size={16} aria-hidden="true" />}
         </button>
+
         {mode === 'register' && (
           <p className="auth-legal">
-            En créant un compte, vous acceptez nos <a href="#/cgv">conditions générales</a>.
+            En créant un compte, vous acceptez nos <a href="#/cgv">Conditions Générales de Vente</a>
+            .
           </p>
         )}
       </form>

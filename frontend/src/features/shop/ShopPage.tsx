@@ -29,6 +29,36 @@ export function ShopPage({ products, loading: catalogLoading, onProductSelect }:
         </div>
       )}
       {products.length === 0 && <div className="empty-state">La collection revient bientôt.</div>}
+      <section className="brand-details" aria-labelledby="brand-details-title">
+        <div className="section-heading">
+          <div>
+            <span className="eyebrow">L’univers neneen</span>
+            <h2 id="brand-details-title">Notre identité, jusque dans les détails.</h2>
+          </div>
+        </div>
+        <div className="brand-details-grid">
+          <figure>
+            <img
+              src="/images/brand/etiquettes.jpg"
+              alt="Étiquettes neneen blanches et bordeaux avec cordons"
+              width={1000}
+              height={800}
+              loading="lazy"
+            />
+            <figcaption>La signature neneen</figcaption>
+          </figure>
+          <figure>
+            <img
+              src="/images/brand/ruban.jpg"
+              alt="Ruban d’emballage aux couleurs et au logo neneen"
+              width={1000}
+              height={1000}
+              loading="lazy"
+            />
+            <figcaption>Les couleurs de notre marque</figcaption>
+          </figure>
+        </div>
+      </section>
     </main>
   )
 }

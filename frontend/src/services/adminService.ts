@@ -32,6 +32,7 @@ export type SiteSettings = {
   address: string
   instagramUrl: string
   facebookUrl: string
+  tiktokUrl: string
   paymentsLive: boolean
 }
 
@@ -86,6 +87,17 @@ export function modifierEtatMessage(token: string, id: string, input: unknown) {
 export function annulerActivite(token: string, id: string) {
   return api(`/admin/activities/${id}`, token, { method: 'DELETE' })
 }
+
+export function modifierStatutActivite(
+  token: string,
+  id: string,
+  status: 'DRAFT' | 'PUBLISHED' | 'CANCELLED',
+) {
+  return api(`/admin/activities/${id}`, token, {
+    method: 'PATCH',
+    body: JSON.stringify({ status }),
+  })
+}
 export const setVariantStock = (
   token: string,
   productId: string,
@@ -132,3 +144,18 @@ export const confirmRefund = (token: string, paymentId: string, reference: strin
     method: 'POST',
     body: JSON.stringify({ reference }),
   })
+
+export function supprimerProduitDefinitivement(token: string, id: string) {
+  return api(`/admin/products/${id}/delete`, token, { method: 'DELETE' })
+}
+
+export function supprimerActiviteDefinitivement(token: string, id: string) {
+  return api(`/admin/activities/${id}/delete`, token, { method: 'DELETE' })
+}
+
+export function repondreAuMessage(token: string, id: string, replyText: string) {
+  return api(`/admin/messages/${id}/reply`, token, {
+    method: 'POST',
+    body: JSON.stringify({ replyText }),
+  })
+}

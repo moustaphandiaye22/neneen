@@ -1,21 +1,51 @@
 services:
-  api:
+  migrate:
+    image: ${MIGRATE_IMAGE:-neneen-migrate:local}
     build:
       context: .
       dockerfile: backend/Dockerfile
-    env_file: backend/.env
+      target: migrate
+    env_file: ${BACKEND_ENV_FILE:-backend/.env}
+    restart: 'no'
+    init: true
+  api:
+    image: ${API_IMAGE:-neneen-api:local}
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+      target: runtime
+    env_file: ${BACKEND_ENV_FILE:-backend/.env}
     environment:
       PORT: '4000'
+      TRUST_PROXY_HOPS: '1'
     expose:
       - '4000'
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    restart: unless-stopped
+    init: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    stop_grace_period: 15s
   web:
+    image: ${WEB_IMAGE:-neneen-web:local}
     build:
       context: .
       dockerfile: frontend/Dockerfile
       args:
         VITE_API_URL: /api
+        VITE_WHATSAPP_NUMBER: ${VITE_WHATSAPP_NUMBER:-}
+        VITE_CONTACT_EMAIL: ${VITE_CONTACT_EMAIL:-}
     ports:
-      - '5173:80'
+      - '${WEB_PORT:-5173}:8080'
     depends_on:
       api:
         condition: service_healthy
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL

@@ -4,6 +4,7 @@ import { resolve } from 'node:path'
 import express from 'express'
 import rateLimit from 'express-rate-limit'
 import helmet from 'helmet'
+import { prisma } from './lib/prisma.js'
 import { env } from './config.js'
 import { handleError } from './errors/handleError.js'
 import { adminRouter } from './domains/admin/routes.js'
@@ -16,6 +17,7 @@ import { uploadRouter } from './domains/uploads/routes.js'
 
 export const app = express()
 app.disable('x-powered-by')
+app.set('trust proxy', env.TRUST_PROXY_HOPS)
 app.use((req, res, next) => {
   const start = performance.now()
   res.on('finish', () =>
@@ -47,7 +49,7 @@ app.use(
 app.use(
   cors({
     origin: env.FRONTEND_URL,
-    methods: ['GET', 'POST', 'PATCH', 'DELETE'],
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
     allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true,
   }),
@@ -59,6 +61,14 @@ app.get('/api/openapi.yaml', async (_req, res) => {
   res.type('application/yaml').send(spec)
 })
 app.get('/api/health', (_req, res) => res.json({ status: 'ok', service: 'neneen-api' }))
+app.get('/api/ready', async (_req, res) => {
+  try {
+    await prisma.$queryRaw`SELECT 1`
+    res.json({ status: 'ready' })
+  } catch {
+    res.status(503).json({ status: 'unavailable' })
+  }
+})
 app.use(
   '/api/auth',
   rateLimit({
