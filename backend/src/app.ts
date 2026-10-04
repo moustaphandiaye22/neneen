@@ -1,3 +1,4 @@
+import './types.js'
 import cors from 'cors'
 import { readFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
