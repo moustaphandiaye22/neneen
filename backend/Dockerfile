@@ -4,10 +4,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends openssl && rm -
 COPY package*.json ./
 COPY backend/package.json backend/package.json
 COPY frontend/package.json frontend/package.json
-COPY shared/contracts/package.json shared/contracts/package.json
+COPY shared/contracts shared/contracts
 RUN npm ci --workspace neneen-backend --workspace @neneen/contracts --include-workspace-root=false
 COPY backend backend
-COPY shared/contracts shared/contracts
 RUN npm --workspace @neneen/contracts run build && npm --prefix backend run build
 
 # One-off migration image: never seed or reset a production database at startup.

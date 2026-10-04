@@ -3,10 +3,9 @@ WORKDIR /app
 COPY package*.json ./
 COPY backend/package.json backend/package.json
 COPY frontend/package.json frontend/package.json
-COPY shared/contracts/package.json shared/contracts/package.json
+COPY shared/contracts shared/contracts
 RUN npm ci --workspace frontend --workspace @neneen/contracts --include-workspace-root=false
 COPY frontend frontend
-COPY shared/contracts shared/contracts
 ARG VITE_API_URL=/api
 ARG VITE_WHATSAPP_NUMBER=""
 ARG VITE_CONTACT_EMAIL=""
