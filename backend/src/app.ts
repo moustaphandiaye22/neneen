@@ -52,12 +52,15 @@ app.use(
     },
   }),
 )
-app.options('*', cors({
-  origin: env.FRONTEND_URL,
-  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-  credentials: true,
-}))
+app.options(
+  '*',
+  cors({
+    origin: env.FRONTEND_URL,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    credentials: true,
+  }),
+)
 app.use(
   cors({
     origin: env.FRONTEND_URL,
