@@ -23,15 +23,25 @@ import {
   verifyEmail,
   saveProfile,
   changePassword,
-  deleteAccount,
   logout,
-  resendVerification,
 } from './services/authService'
 import { cancelBooking, joinWaitlist, getTicket } from './services/accountService'
 import { getContent } from './services/contentService'
 import { apiUrl } from './services/api'
 import { uploadImage } from './services/uploadService'
-import { ArrowRight, CircleUserRound, Minus, Plus, ShoppingBag, X } from 'lucide-react'
+import {
+  ArrowRight,
+  Ban,
+  CircleUserRound,
+  Download,
+  EyeOff,
+  Minus,
+  Pencil,
+  Plus,
+  RefreshCw,
+  ShoppingBag,
+  X,
+} from 'lucide-react'
 import type { SyntheticEvent } from 'react'
 import {
   annulerActivite,
@@ -50,6 +60,10 @@ import {
   changeUserRole,
   confirmCash,
   confirmRefund,
+  getSiteSettings,
+  getProductOptions,
+  saveSiteSettings,
+  type SiteSettings,
 } from './services/adminService'
 import { listerActivites, reserverActivite } from './services/activityService'
 import { chargerEspaceClient } from './services/accountService'
@@ -92,9 +106,16 @@ function App() {
     { slug: string; title: string; body: string; published: boolean }[]
   >([])
   const [adminTab, setAdminTab] = useState('dashboard')
+  const [siteSettings, setSiteSettings] = useState<SiteSettings | null>(null)
+  const [productOptions, setProductOptions] = useState<{ colors: string[]; sizes: string[] }>({
+    colors: [],
+    sizes: [],
+  })
   const [activityFilter, setActivityFilter] = useState('ALL')
   const [editActivity, setEditActivity] = useState<Activity | null>(null)
   const [editProduct, setEditProduct] = useState<Product | null>(null)
+  const [activityFormOpen, setActivityFormOpen] = useState(false)
+  const [productFormOpen, setProductFormOpen] = useState(false)
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
   const [selectedSize, setSelectedSize] = useState('M')
   const [notice, setNotice] = useState('')
@@ -173,6 +194,19 @@ function App() {
       void listContents(token)
         .then((result) => setContents(result.contents))
         .catch((reason) => setError((reason as Error).message))
+    if (route === '/admin' && token && adminTab === 'settings' && user?.role === 'ADMIN')
+      void getSiteSettings(token)
+        .then((result) => setSiteSettings(result.settings))
+        .catch((reason) => setError((reason as Error).message))
+    if (route === '/admin' && token && adminTab === 'products')
+      void getProductOptions(token)
+        .then((result) =>
+          setProductOptions({
+            colors: result.colors.map((color) => color.label),
+            sizes: result.sizes.map((size) => size.label),
+          }),
+        )
+        .catch((reason) => setError((reason as Error).message))
     if (route === '/admin' && token && ['ADMIN', 'STAFF'].includes(user?.role || ''))
       void chargerVueAdmin(token, adminTab)
         .then(setAdminData)
@@ -210,7 +244,9 @@ function App() {
     localStorage.setItem('neneen_user', JSON.stringify(result.user))
     setToken(result.token)
     setUser(result.user)
-    const nextRoute = sessionStorage.getItem('neneen_after_login') || '/account'
+    const nextRoute =
+      sessionStorage.getItem('neneen_after_login') ||
+      (['ADMIN', 'STAFF'].includes(result.user.role) ? '/admin' : '/account')
     sessionStorage.removeItem('neneen_after_login')
     resetSync()
     location.hash = nextRoute
@@ -264,6 +300,7 @@ function App() {
       'customers',
       'messages',
       'content',
+      'settings',
       'check-in',
     ]
     const labels: Record<string, string> = {
@@ -276,6 +313,7 @@ function App() {
       customers: 'Clients',
       messages: 'Messages',
       content: 'Contenus',
+      settings: 'Paramètres du site',
       'check-in': 'Contrôle des entrées',
     }
     const stats: Array<[string, string | number | undefined]> = [
@@ -286,9 +324,13 @@ function App() {
       ['Messages à lire', adminData.unreadMessages as number | undefined],
       ['Ventes confirmées', money(Number(adminData.revenue || 0))],
     ]
-    const activitiesData = (adminData.activities as Activity[]) || []
-    const productsData = (adminData.products as Product[]) || []
-    const rows = (key: string) => (adminData[key] as Row[]) || []
+    const activitiesData = Array.isArray(adminData.activities)
+      ? (adminData.activities as Activity[])
+      : []
+    const productsData = Array.isArray(adminData.products) ? (adminData.products as Product[]) : []
+    const colorOptions = productOptions.colors
+    const sizeOptions = productOptions.sizes
+    const rows = (key: string) => (Array.isArray(adminData[key]) ? adminData[key] : []) as Row[]
     return (
       <main className="admin-page">
         <div className="admin-title">
@@ -329,8 +371,13 @@ function App() {
                   <span className="eyebrow">Espace de travail</span>
                   <h2>{labels[adminTab]}</h2>
                 </div>
-                <button className="icon-button" onClick={() => void refreshAdmin()}>
-                  Actualiser <ArrowRight size={14} />
+                <button
+                  className="icon-button"
+                  onClick={() => void refreshAdmin()}
+                  title="Actualiser"
+                >
+                  <RefreshCw size={16} aria-hidden="true" />
+                  <span className="sr-only">Actualiser</span>
                 </button>
               </div>
               {adminTab === 'dashboard' && (
@@ -354,394 +401,457 @@ function App() {
                 </div>
               )}
               {adminTab === 'activities' && (
-                <div className="admin-columns">
-                  <div className="admin-table-wrap">
-                    <table>
-                      <thead>
-                        <tr>
-                          <th>Activité</th>
-                          <th>Date</th>
-                          <th>Places</th>
-                          <th>État</th>
-                          <th>Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {activitiesData.map((item) => (
-                          <tr key={item.id}>
-                            <td>
-                              <strong>{item.title}</strong>
-                              <small>
-                                {typeLabel(item.type)} · {money(item.price)}
-                              </small>
-                            </td>
-                            <td>{dateLabel(item.startsAt)}</td>
-                            <td>
-                              {item.reserved}/{item.capacity}
-                            </td>
-                            <td>{stateLabel(item.status)}</td>
-                            <td>
-                              <button
-                                className="icon-button"
-                                onClick={() => {
-                                  if (token)
-                                    void participantsCsv(token, item.id).catch((reason) =>
-                                      setError((reason as Error).message),
-                                    )
-                                }}
-                              >
-                                CSV
-                              </button>
-                              <button className="icon-button" onClick={() => setEditActivity(item)}>
-                                Modifier
-                              </button>
-                              <button
-                                className="icon-button danger"
-                                onClick={() =>
-                                  void adminStatus((sessionToken) =>
-                                    annulerActivite(sessionToken, item.id),
-                                  )
-                                }
-                              >
-                                Annuler
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                  <form
-                    className="admin-form"
-                    noValidate
-                    key={editActivity?.id || 'new-activity'}
-                    onSubmit={(event) =>
-                      runForm(event, async (data) => {
-                        const values = Object.fromEntries(data.entries())
-                        const payload = {
-                          ...values,
-                          imageUrl: String(values.imageUrl || ''),
-                          featured: values.featured === 'on',
-                          gallery: [],
-                          startsAt: values.startsAt
-                            ? new Date(`${String(values.startsAt)}:00Z`).toISOString()
-                            : '',
-                          price: Number(values.price),
-                          capacity: Number(values.capacity),
-                          schedule: String(values.schedule || '')
-                            .split(/\r?\n/)
-                            .map((step) => step.trim())
-                            .filter(Boolean),
-                          included: String(values.included || '')
-                            .split(/\r?\n/)
-                            .map((item) => item.trim())
-                            .filter(Boolean),
-                        }
-                        if (!token) throw new Error('Reconnectez-vous pour gérer les activités.')
-                        const file = data.get('imageFile')
-                        if (file instanceof File && file.size > 0)
-                          payload.imageUrl = await uploadImage(token, 'activities', file)
-                        await enregistrerActivite(token, payload, editActivity?.id)
-                        setEditActivity(null)
-                        await refreshAdmin()
-                        setNotice('Activité enregistrée.')
-                      })
-                    }
+                <>
+                  <button
+                    className="button button-dark admin-add-button"
+                    onClick={() => {
+                      setEditActivity(null)
+                      setActivityFormOpen(true)
+                    }}
                   >
-                    <span className="eyebrow">
-                      {editActivity ? 'Modifier' : 'Nouvelle activité'}
-                    </span>
-                    <h3>{editActivity?.title || 'Créer une sortie'}</h3>
-                    <label>
-                      Nom
-                      <input name="title" required defaultValue={editActivity?.title} />
-                    </label>
-                    <label>
-                      Type
-                      <select name="type" defaultValue={editActivity?.type || 'EXCURSION'}>
-                        <option value="EXCURSION">Excursion</option>
-                        <option value="AFTERWORK">Soirée après le travail</option>
-                        <option value="EVENT">Événement</option>
-                      </select>
-                    </label>
-                    <label>
-                      Description
-                      <textarea
-                        name="description"
-                        required
-                        defaultValue={editActivity?.description}
-                      />
-                    </label>
-                    <label>
-                      Lieu
-                      <input name="location" required defaultValue={editActivity?.location} />
-                    </label>
-                    <label>
-                      Durée estimée
-                      <input
-                        name="duration"
-                        maxLength={100}
-                        defaultValue={editActivity?.duration || ''}
-                        placeholder="Ex. 2 jours, 1 nuit"
-                      />
-                    </label>
-                    <label>
-                      Date
-                      <input
-                        type="datetime-local"
-                        name="startsAt"
-                        required
-                        defaultValue={
-                          editActivity
-                            ? new Date(editActivity.startsAt).toISOString().slice(0, 16)
-                            : ''
-                        }
-                      />
-                    </label>
-                    <div className="field-pair">
-                      <label>
-                        Prix
-                        <input
-                          name="price"
-                          type="number"
-                          min="0"
-                          required
-                          defaultValue={editActivity?.price}
-                        />
-                      </label>
-                      <label>
-                        Places
-                        <input
-                          name="capacity"
-                          type="number"
-                          min="1"
-                          required
-                          defaultValue={editActivity?.capacity}
-                        />
-                      </label>
+                    Ajouter une activité <Plus size={16} />
+                  </button>
+                  <div className="admin-columns">
+                    <div className="admin-table-wrap">
+                      <table>
+                        <thead>
+                          <tr>
+                            <th>Activité</th>
+                            <th>Date</th>
+                            <th>Places</th>
+                            <th>État</th>
+                            <th>Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {(Array.isArray(activitiesData) ? activitiesData : []).map((item) => (
+                            <tr key={item.id}>
+                              <td>
+                                <strong>{item.title}</strong>
+                                <small>
+                                  {typeLabel(item.type)} · {money(item.price)}
+                                </small>
+                              </td>
+                              <td>{dateLabel(item.startsAt)}</td>
+                              <td>
+                                {item.reserved}/{item.capacity}
+                              </td>
+                              <td>{stateLabel(item.status)}</td>
+                              <td>
+                                <button
+                                  className="icon-button"
+                                  onClick={() => {
+                                    if (token)
+                                      void participantsCsv(token, item.id).catch((reason) =>
+                                        setError((reason as Error).message),
+                                      )
+                                  }}
+                                >
+                                  <Download size={16} aria-hidden="true" />
+                                  <span className="sr-only">Exporter les participants</span>
+                                </button>
+                                <button
+                                  className="icon-button"
+                                  onClick={() => {
+                                    setEditActivity(item)
+                                    setActivityFormOpen(true)
+                                  }}
+                                >
+                                  <Pencil size={16} aria-hidden="true" />
+                                  <span className="sr-only">Modifier</span>
+                                </button>
+                                <button
+                                  className="icon-button danger"
+                                  onClick={() =>
+                                    void adminStatus((sessionToken) =>
+                                      annulerActivite(sessionToken, item.id),
+                                    )
+                                  }
+                                >
+                                  <Ban size={16} aria-hidden="true" />
+                                  <span className="sr-only">Annuler</span>
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
                     </div>
-                    <label>
-                      Programme (une étape par ligne)
-                      <textarea
-                        name="schedule"
-                        maxLength={5000}
-                        defaultValue={editActivity?.schedule?.join('\n') || ''}
-                        placeholder={'8 h : départ de Dakar\n10 h : arrivée'}
-                      />
-                    </label>
-                    <label>
-                      Inclus dans le prix (un élément par ligne)
-                      <textarea
-                        name="included"
-                        maxLength={3000}
-                        defaultValue={editActivity?.included?.join('\n') || ''}
-                        placeholder={'Transport aller-retour\nDéjeuner'}
-                      />
-                    </label>
-                    <label>
-                      À prévoir
-                      <textarea
-                        name="bringList"
-                        maxLength={1000}
-                        defaultValue={editActivity?.bringList || ''}
-                      />
-                    </label>
-                    <label>
-                      Photo (URL)
-                      <input name="imageUrl" type="url" defaultValue={editActivity?.imageUrl} />
-                    </label>
-                    <label>
-                      Ou importer une image
-                      <input name="imageFile" type="file" accept="image/*" />
-                    </label>
-                    <label>
-                      <input
-                        type="checkbox"
-                        name="featured"
-                        defaultChecked={editActivity?.featured}
-                      />{' '}
-                      Mettre en avant sur l’accueil
-                    </label>
-                    <label>
-                      Publication
-                      <select name="status" defaultValue={editActivity?.status || 'DRAFT'}>
-                        <option value="DRAFT">Brouillon</option>
-                        <option value="PUBLISHED">Publié</option>
-                        <option value="CANCELLED">Annulé</option>
-                      </select>
-                    </label>
-                    <button className="button button-dark" disabled={busy}>
-                      {editActivity ? 'Enregistrer' : 'Créer l’activité'}
-                    </button>
-                  </form>
-                </div>
+                    <form
+                      className={
+                        activityFormOpen
+                          ? 'admin-form admin-editor'
+                          : 'admin-form admin-editor admin-editor-closed'
+                      }
+                      noValidate
+                      key={editActivity?.id || 'new-activity'}
+                      onSubmit={(event) =>
+                        runForm(event, async (data) => {
+                          const values = Object.fromEntries(data.entries())
+                          const payload = {
+                            ...values,
+                            imageUrl: String(values.imageUrl || ''),
+                            featured: editActivity?.featured || false,
+                            gallery: [],
+                            startsAt: values.startsAt
+                              ? new Date(`${String(values.startsAt)}:00Z`).toISOString()
+                              : '',
+                            price: Number(values.price),
+                            capacity: Number(values.capacity),
+                            schedule: String(values.schedule || '')
+                              .split(/\r?\n/)
+                              .map((step) => step.trim())
+                              .filter(Boolean),
+                            included: String(values.included || '')
+                              .split(/\r?\n/)
+                              .map((item) => item.trim())
+                              .filter(Boolean),
+                          }
+                          if (!token) throw new Error('Reconnectez-vous pour gérer les activités.')
+                          const file = data.get('imageFile')
+                          if (file instanceof File && file.size > 0)
+                            payload.imageUrl = await uploadImage(token, 'activities', file)
+                          await enregistrerActivite(token, payload, editActivity?.id)
+                          setEditActivity(null)
+                          setActivityFormOpen(false)
+                          await refreshAdmin()
+                          setNotice('Activité enregistrée.')
+                        })
+                      }
+                    >
+                      <button
+                        type="button"
+                        className="admin-editor-close"
+                        onClick={() => setActivityFormOpen(false)}
+                        aria-label="Fermer"
+                      >
+                        <X size={18} />
+                      </button>
+                      <span className="eyebrow">
+                        {editActivity ? 'Modifier' : 'Nouvelle activité'}
+                      </span>
+                      <h3>{editActivity?.title || 'Créer une sortie'}</h3>
+                      <label>
+                        Nom
+                        <input name="title" required defaultValue={editActivity?.title} />
+                      </label>
+                      <label>
+                        Type
+                        <select name="type" defaultValue={editActivity?.type || 'EXCURSION'}>
+                          <option value="EXCURSION">Excursion</option>
+                          <option value="AFTERWORK">Soirée après le travail</option>
+                          <option value="EVENT">Événement</option>
+                        </select>
+                      </label>
+                      <label>
+                        Description
+                        <textarea
+                          name="description"
+                          required
+                          defaultValue={editActivity?.description}
+                        />
+                      </label>
+                      <label>
+                        Lieu
+                        <input name="location" required defaultValue={editActivity?.location} />
+                      </label>
+                      <label>
+                        Durée estimée
+                        <input
+                          name="duration"
+                          maxLength={100}
+                          defaultValue={editActivity?.duration || ''}
+                          placeholder="Ex. 2 jours, 1 nuit"
+                        />
+                      </label>
+                      <label>
+                        Date
+                        <input
+                          type="datetime-local"
+                          name="startsAt"
+                          required
+                          defaultValue={
+                            editActivity
+                              ? new Date(editActivity.startsAt).toISOString().slice(0, 16)
+                              : ''
+                          }
+                        />
+                      </label>
+                      <div className="field-pair">
+                        <label>
+                          Prix
+                          <input
+                            name="price"
+                            type="number"
+                            min="0"
+                            required
+                            defaultValue={editActivity?.price}
+                          />
+                        </label>
+                        <label>
+                          Places
+                          <input
+                            name="capacity"
+                            type="number"
+                            min="1"
+                            required
+                            defaultValue={editActivity?.capacity}
+                          />
+                        </label>
+                      </div>
+                      <label>
+                        Programme (une étape par ligne)
+                        <textarea
+                          name="schedule"
+                          maxLength={5000}
+                          defaultValue={editActivity?.schedule?.join('\n') || ''}
+                          placeholder={'8 h : départ de Dakar\n10 h : arrivée'}
+                        />
+                      </label>
+                      <label>
+                        Inclus dans le prix (un élément par ligne)
+                        <textarea
+                          name="included"
+                          maxLength={3000}
+                          defaultValue={editActivity?.included?.join('\n') || ''}
+                          placeholder={'Transport aller-retour\nDéjeuner'}
+                        />
+                      </label>
+                      <label>
+                        À prévoir
+                        <textarea
+                          name="bringList"
+                          maxLength={1000}
+                          defaultValue={editActivity?.bringList || ''}
+                        />
+                      </label>
+                      <label>
+                        Importer une image
+                        <input name="imageFile" type="file" accept="image/*" />
+                      </label>
+                      <label>
+                        Publication
+                        <select name="status" defaultValue={editActivity?.status || 'DRAFT'}>
+                          <option value="DRAFT">Brouillon</option>
+                          <option value="PUBLISHED">Publié</option>
+                          <option value="CANCELLED">Annulé</option>
+                        </select>
+                      </label>
+                      <button className="button button-dark" disabled={busy}>
+                        {editActivity ? 'Enregistrer' : 'Créer l’activité'}
+                      </button>
+                    </form>
+                  </div>
+                </>
               )}
               {adminTab === 'products' && (
-                <div className="admin-columns">
-                  <div className="admin-table-wrap">
-                    <table>
-                      <thead>
-                        <tr>
-                          <th>Produit</th>
-                          <th>Prix</th>
-                          <th>Stock</th>
-                          <th></th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {productsData.map((item) => (
-                          <tr key={item.id}>
-                            <td>
-                              <strong>{item.name}</strong>
-                              <small>{item.color}</small>
-                            </td>
-                            <td>{money(item.price)}</td>
-                            <td>{item.stock}</td>
-                            <td>
-                              <button className="icon-button" onClick={() => setEditProduct(item)}>
-                                Modifier
-                              </button>
-                              <button
-                                className="icon-button danger"
-                                onClick={() =>
-                                  void adminStatus((sessionToken) =>
-                                    masquerProduit(sessionToken, item.id),
-                                  )
-                                }
-                              >
-                                Masquer
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                  <form
-                    className="admin-form"
-                    noValidate
-                    key={editProduct?.id || 'new-product'}
-                    onSubmit={(event) =>
-                      runForm(event, async (data) => {
-                        const values = Object.fromEntries(data.entries())
-                        const payload = {
-                          ...values,
-                          imageUrl: String(values.imageUrl || ''),
-                          price: Number(values.price),
-                          stock: Number(values.stock),
-                          sizes: String(values.sizes || '')
-                            .split(',')
-                            .map((size) => size.trim())
-                            .filter(Boolean),
-                          active: true,
-                        }
-                        if (!token) throw new Error('Reconnectez-vous pour gérer le catalogue.')
-                        const file = data.get('imageFile')
-                        if (file instanceof File && file.size > 0)
-                          payload.imageUrl = await uploadImage(token, 'products', file)
-                        await enregistrerProduit(token, payload, editProduct?.id)
-                        setEditProduct(null)
-                        await refreshAdmin()
-                        setNotice('Produit enregistré.')
-                      })
-                    }
+                <>
+                  <button
+                    className="button button-dark admin-add-button"
+                    onClick={() => {
+                      setEditProduct(null)
+                      setProductFormOpen(true)
+                    }}
                   >
-                    <span className="eyebrow">Catalogue</span>
-                    <h3>{editProduct?.name || 'Ajouter un produit'}</h3>
-                    <label>
-                      Nom
-                      <input name="name" required defaultValue={editProduct?.name} />
-                    </label>
-                    <label>
-                      Description
-                      <textarea
-                        name="description"
-                        required
-                        defaultValue={editProduct?.description}
-                      />
-                    </label>
-                    <label>
-                      Couleur
-                      <input name="color" required defaultValue={editProduct?.color} />
-                    </label>
-                    <div className="field-pair">
-                      <label>
-                        Prix
-                        <input
-                          name="price"
-                          type="number"
-                          min="1"
-                          required
-                          defaultValue={editProduct?.price}
-                        />
-                      </label>
-                      <label>
-                        Stock initial {editProduct && '(modifier par taille ci-dessous)'}
-                        <input
-                          name="stock"
-                          type="number"
-                          min="0"
-                          required
-                          disabled={Boolean(editProduct)}
-                          defaultValue={editProduct?.stock}
-                        />
-                      </label>
+                    Ajouter un produit <Plus size={16} />
+                  </button>
+                  <div className="admin-columns">
+                    <div className="admin-table-wrap">
+                      <table>
+                        <thead>
+                          <tr>
+                            <th>Produit</th>
+                            <th>Prix</th>
+                            <th>Stock</th>
+                            <th></th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {productsData.map((item) => (
+                            <tr key={item.id}>
+                              <td>
+                                <strong>{item.name}</strong>
+                                <small>{item.color}</small>
+                              </td>
+                              <td>{money(item.price)}</td>
+                              <td>{item.stock}</td>
+                              <td>
+                                <button
+                                  className="icon-button"
+                                  onClick={() => {
+                                    setEditProduct(item)
+                                    setProductFormOpen(true)
+                                  }}
+                                >
+                                  <Pencil size={16} aria-hidden="true" />
+                                  <span className="sr-only">Modifier</span>
+                                </button>
+                                <button
+                                  className="icon-button danger"
+                                  onClick={() =>
+                                    void adminStatus((sessionToken) =>
+                                      masquerProduit(sessionToken, item.id),
+                                    )
+                                  }
+                                >
+                                  <EyeOff size={16} aria-hidden="true" />
+                                  <span className="sr-only">Masquer</span>
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
                     </div>
-                    <label>
-                      Tailles séparées par des virgules
-                      <input
-                        name="sizes"
-                        disabled={Boolean(editProduct)}
-                        defaultValue={editProduct?.sizes.join(', ') || 'S, M, L, XL'}
-                      />
-                    </label>
-                    <label>
-                      Photo (URL)
-                      <input name="imageUrl" type="url" defaultValue={editProduct?.imageUrl} />
-                    </label>
-                    <label>
-                      Ou importer une image
-                      <input name="imageFile" type="file" accept="image/*" />
-                    </label>
-
-                    <button className="button button-dark" disabled={busy}>
-                      {editProduct ? 'Enregistrer' : 'Ajouter le produit'}
-                    </button>
-                  </form>
-                  {editProduct && (
-                    <div>
-                      <h4>Stock par taille</h4>
-                      {(editProduct.variants || []).map((variant) => (
-                        <form
-                          key={variant.size}
-                          onSubmit={(event) =>
-                            runForm(event, async (data) => {
-                              if (!token) return
-                              await setVariantStock(token, editProduct.id, {
-                                size: variant.size,
-                                color: editProduct.color,
-                                stock: Number(data.get('stock')),
-                              })
-                              await refreshAdmin()
-                              setNotice('Stock mis à jour.')
-                            })
+                    <form
+                      className={
+                        productFormOpen
+                          ? 'admin-form admin-editor'
+                          : 'admin-form admin-editor admin-editor-closed'
+                      }
+                      noValidate
+                      key={editProduct?.id || 'new-product'}
+                      onSubmit={(event) =>
+                        runForm(event, async (data) => {
+                          const values = Object.fromEntries(data.entries())
+                          const payload = {
+                            ...values,
+                            imageUrl: String(values.imageUrl || ''),
+                            price: Number(values.price),
+                            stock: Number(values.stock),
+                            sizes: data.getAll('sizes').map(String).filter(Boolean),
+                            active: true,
                           }
+                          if (!token) throw new Error('Reconnectez-vous pour gérer le catalogue.')
+                          const file = data.get('imageFile')
+                          if (file instanceof File && file.size > 0)
+                            payload.imageUrl = await uploadImage(token, 'products', file)
+                          await enregistrerProduit(token, payload, editProduct?.id)
+                          setEditProduct(null)
+                          setProductFormOpen(false)
+                          await refreshAdmin()
+                          setNotice('Produit enregistré.')
+                        })
+                      }
+                    >
+                      <button
+                        type="button"
+                        className="admin-editor-close"
+                        onClick={() => setProductFormOpen(false)}
+                        aria-label="Fermer"
+                      >
+                        <X size={18} />
+                      </button>
+                      <span className="eyebrow">Catalogue</span>
+                      <h3>{editProduct?.name || 'Ajouter un produit'}</h3>
+                      <label>
+                        Nom
+                        <input name="name" required defaultValue={editProduct?.name} />
+                      </label>
+                      <label>
+                        Description
+                        <textarea
+                          name="description"
+                          required
+                          defaultValue={editProduct?.description}
+                        />
+                      </label>
+                      <label>
+                        Couleur
+                        <select
+                          name="color"
+                          required
+                          defaultValue={editProduct?.color || colorOptions[0] || ''}
                         >
-                          <label>
-                            {variant.size}
-                            <input
-                              type="number"
-                              name="stock"
-                              min="0"
-                              defaultValue={variant.stock}
-                            />
-                          </label>
-                          <button type="submit">Enregistrer</button>
-                        </form>
-                      ))}
-                    </div>
-                  )}
-                </div>
+                          {colorOptions.map((color) => (
+                            <option value={color} key={color}>
+                              {color}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <div className="field-pair">
+                        <label>
+                          Prix
+                          <input
+                            name="price"
+                            type="number"
+                            min="1"
+                            required
+                            defaultValue={editProduct?.price}
+                          />
+                        </label>
+                        <label>
+                          Stock initial {editProduct && '(modifier par taille ci-dessous)'}
+                          <input
+                            name="stock"
+                            type="number"
+                            min="0"
+                            required
+                            disabled={Boolean(editProduct)}
+                            defaultValue={editProduct?.stock}
+                          />
+                        </label>
+                      </div>
+                      <label>
+                        Tailles disponibles
+                        <select
+                          name="sizes"
+                          multiple
+                          disabled={Boolean(editProduct)}
+                          defaultValue={editProduct?.sizes || sizeOptions}
+                        >
+                          {sizeOptions.map((size) => (
+                            <option value={size} key={size}>
+                              {size}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <label>
+                        Importer une image
+                        <input name="imageFile" type="file" accept="image/*" />
+                      </label>
+
+                      <button className="button button-dark" disabled={busy}>
+                        {editProduct ? 'Enregistrer' : 'Ajouter le produit'}
+                      </button>
+                    </form>
+                    {editProduct && (
+                      <div>
+                        <h4>Stock par taille</h4>
+                        {(editProduct.variants || []).map((variant) => (
+                          <form
+                            key={variant.size}
+                            onSubmit={(event) =>
+                              runForm(event, async (data) => {
+                                if (!token) return
+                                await setVariantStock(token, editProduct.id, {
+                                  size: variant.size,
+                                  color: editProduct.color,
+                                  stock: Number(data.get('stock')),
+                                })
+                                await refreshAdmin()
+                                setNotice('Stock mis à jour.')
+                              })
+                            }
+                          >
+                            <label>
+                              {variant.size}
+                              <input
+                                type="number"
+                                name="stock"
+                                min="0"
+                                defaultValue={variant.stock}
+                              />
+                            </label>
+                            <button type="submit">Enregistrer</button>
+                          </form>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </>
               )}
               {adminTab === 'bookings' && (
                 <div className="admin-table-wrap">
@@ -996,7 +1106,7 @@ function App() {
                           await saveContent(token, content.slug, {
                             title: String(data.get('title')),
                             body: String(data.get('body')),
-                            published: data.get('published') === 'on',
+                            published: data.get('published') === 'true',
                           })
                           setContents((await listContents(token)).contents)
                           setNotice('Contenu enregistré.')
@@ -1013,12 +1123,14 @@ function App() {
                         <textarea name="body" defaultValue={content.body} rows={8} required />
                       </label>
                       <label>
-                        <input
-                          type="checkbox"
+                        Publication
+                        <select
                           name="published"
-                          defaultChecked={content.published}
-                        />{' '}
-                        Publié
+                          defaultValue={content.published ? 'true' : 'false'}
+                        >
+                          <option value="true">Publié</option>
+                          <option value="false">Brouillon</option>
+                        </select>
                       </label>
                       <button className="button button-dark" disabled={busy}>
                         Enregistrer
@@ -1026,6 +1138,85 @@ function App() {
                     </form>
                   ))}
                 </div>
+              )}
+              {adminTab === 'settings' && siteSettings && user?.role === 'ADMIN' && (
+                <form
+                  className="admin-form site-settings-form"
+                  onSubmit={(event) =>
+                    runForm(event, async (data) => {
+                      if (!token || !siteSettings) return
+                      const result = await saveSiteSettings(token, {
+                        siteName: String(data.get('siteName')),
+                        slogan: String(data.get('slogan')),
+                        contactEmail: String(data.get('contactEmail')),
+                        contactPhone: String(data.get('contactPhone')),
+                        whatsapp: String(data.get('whatsapp')),
+                        address: String(data.get('address')),
+                        instagramUrl: String(data.get('instagramUrl')),
+                        facebookUrl: String(data.get('facebookUrl')),
+                        paymentsLive: siteSettings.paymentsLive,
+                      })
+                      setSiteSettings(result.settings)
+                      setNotice('Paramètres enregistrés.')
+                    })
+                  }
+                >
+                  <span className="eyebrow">Configuration générale</span>
+                  <h3>Identité et contacts</h3>
+                  <div className="field-pair">
+                    <label>
+                      Nom du site
+                      <input name="siteName" defaultValue={siteSettings.siteName} required />
+                    </label>
+                    <label>
+                      Slogan
+                      <input name="slogan" defaultValue={siteSettings.slogan} />
+                    </label>
+                  </div>
+                  <div className="field-pair">
+                    <label>
+                      E-mail
+                      <input
+                        name="contactEmail"
+                        type="email"
+                        defaultValue={siteSettings.contactEmail}
+                      />
+                    </label>
+                    <label>
+                      Téléphone
+                      <input name="contactPhone" defaultValue={siteSettings.contactPhone} />
+                    </label>
+                  </div>
+                  <label>
+                    WhatsApp
+                    <input name="whatsapp" defaultValue={siteSettings.whatsapp} />
+                  </label>
+                  <label>
+                    Adresse
+                    <input name="address" defaultValue={siteSettings.address} />
+                  </label>
+                  <div className="field-pair">
+                    <label>
+                      Instagram
+                      <input
+                        name="instagramUrl"
+                        type="url"
+                        defaultValue={siteSettings.instagramUrl}
+                      />
+                    </label>
+                    <label>
+                      Facebook
+                      <input
+                        name="facebookUrl"
+                        type="url"
+                        defaultValue={siteSettings.facebookUrl}
+                      />
+                    </label>
+                  </div>
+                  <button className="button button-dark" disabled={busy}>
+                    Enregistrer les paramètres
+                  </button>
+                </form>
               )}
               {adminTab === 'check-in' && (
                 <form
@@ -1094,10 +1285,10 @@ function App() {
     <div className="site-shell">
       <SiteHeader
         userName={user?.firstName}
-        isStaff={Boolean(user && ['ADMIN', 'STAFF'].includes(user.role))}
         cartCount={cartCount}
         menuOpen={menuOpen}
         onMenuToggle={() => setMenuOpen((open) => !open)}
+        onSignOut={signOut}
       />
       <FeedbackBanners
         notice={notice}
@@ -1796,14 +1987,16 @@ function App() {
                 })
               }
             >
-              <label className="form-label">
-                Prénom
-                <input name="firstName" defaultValue={user.firstName} required />
-              </label>
-              <label className="form-label">
-                Nom
-                <input name="lastName" defaultValue={user.lastName} required />
-              </label>
+              <div className="field-pair">
+                <label className="form-label">
+                  Prénom
+                  <input name="firstName" defaultValue={user.firstName} required />
+                </label>
+                <label className="form-label">
+                  Nom
+                  <input name="lastName" defaultValue={user.lastName} required />
+                </label>
+              </div>
               <label className="form-label">
                 Téléphone WhatsApp
                 <input name="phone" defaultValue={user.phone} required />
@@ -1833,37 +2026,6 @@ function App() {
               </label>
               <button className="button button-dark" disabled={busy}>
                 Changer le mot de passe
-              </button>
-            </form>
-            {!user.emailVerifiedAt && (
-              <button
-                className="text-action"
-                onClick={() => {
-                  if (token)
-                    void resendVerification(token)
-                      .then(() => setNotice('Un nouveau lien de vérification sera envoyé.'))
-                      .catch((reason) => setError((reason as Error).message))
-                }}
-              >
-                Renvoyer le lien de vérification
-              </button>
-            )}
-            <h2>Supprimer mon compte</h2>
-            <form
-              onSubmit={(event) =>
-                runForm(event, async (data) => {
-                  if (!token) return
-                  await deleteAccount(token, String(data.get('password')))
-                  signOut()
-                })
-              }
-            >
-              <label className="form-label">
-                Confirmer avec le mot de passe
-                <input name="password" type="password" required />
-              </label>
-              <button className="text-action" disabled={busy}>
-                Supprimer définitivement
               </button>
             </form>
           </section>

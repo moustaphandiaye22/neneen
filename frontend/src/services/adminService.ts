@@ -23,6 +23,31 @@ export function chargerVueAdmin(token: string, tab: string) {
   return api<AdminData>(`/admin${adminEndpoints[tab] || adminEndpoints.dashboard}`, token)
 }
 
+export type SiteSettings = {
+  siteName: string
+  slogan: string
+  contactEmail: string
+  contactPhone: string
+  whatsapp: string
+  address: string
+  instagramUrl: string
+  facebookUrl: string
+  paymentsLive: boolean
+}
+
+export const getSiteSettings = (token: string) =>
+  api<{ settings: SiteSettings }>('/admin/settings', token)
+export const getProductOptions = (token: string) =>
+  api<{ colors: { label: string }[]; sizes: { label: string; position: number }[] }>(
+    '/admin/product-options',
+    token,
+  )
+export const saveSiteSettings = (token: string, settings: SiteSettings) =>
+  api<{ settings: SiteSettings }>('/admin/settings', token, {
+    method: 'PATCH',
+    body: JSON.stringify(settings),
+  })
+
 export function enregistrerActivite(token: string, input: unknown, id?: string) {
   const activity = validerAvec(activiteSchema, input)
   return api(id ? `/admin/activities/${id}` : '/admin/activities', token, {

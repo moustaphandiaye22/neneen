@@ -12,6 +12,26 @@ import { httpError } from '../../errors/httpError.js'
 const userSummary = { firstName: true, lastName: true, email: true, phone: true } as const
 
 export const adminRepository = {
+  listProductOptions() {
+    return Promise.all([
+      prisma.productColorOption.findMany({ orderBy: { label: 'asc' } }),
+      prisma.productSizeOption.findMany({ orderBy: { position: 'asc' } }),
+    ])
+  },
+  getSiteSettings() {
+    return prisma.siteSettings.upsert({
+      where: { id: 'main' },
+      create: { id: 'main' },
+      update: {},
+    })
+  },
+  updateSiteSettings(data: Prisma.SiteSettingsUpdateInput) {
+    return prisma.siteSettings.upsert({
+      where: { id: 'main' },
+      create: { ...(data as Prisma.SiteSettingsCreateInput), id: 'main' },
+      update: data,
+    })
+  },
   async getDashboard() {
     const [customers, activities, bookings, orders, unreadMessages, revenue] = await Promise.all([
       prisma.user.count({ where: { role: 'CUSTOMER' } }),

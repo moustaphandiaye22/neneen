@@ -211,6 +211,15 @@ async function main() {
       update: {},
     })
 
+  for (const label of ['Marine', 'Terracotta', 'Blanc', 'Gris', 'Crème', 'Noir'])
+    await prisma.productColorOption.upsert({ where: { label }, create: { label }, update: {} })
+  for (const [position, label] of ['XS', 'S', 'M', 'L', 'XL', 'XXL'].entries())
+    await prisma.productSizeOption.upsert({
+      where: { label },
+      create: { label, position },
+      update: { position },
+    })
+
   const email = process.env.ADMIN_EMAIL?.toLowerCase()
   const password = process.env.ADMIN_PASSWORD
   if (email && password) {

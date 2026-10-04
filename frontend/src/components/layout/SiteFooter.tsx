@@ -51,7 +51,6 @@ export function SiteFooter() {
         <div className="footer-bottom">
           <span>© {new Date().getFullYear()} neneen. Tous droits réservés.</span>
           <span>Fait pour se retrouver à Dakar.</span>
-          <a href="#/admin">Administration</a>
         </div>
       </div>
     </footer>

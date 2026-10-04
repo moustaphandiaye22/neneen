@@ -73,3 +73,7 @@ export const changerRole = (actorId: string, id: string, role: 'CUSTOMER' | 'STA
   adminRepository.changeRole(actorId, id, role)
 
 export const listerPaiements = () => adminRepository.listPayments()
+export const listerOptionsProduit = () => adminRepository.listProductOptions()
+export const obtenirParametres = () => adminRepository.getSiteSettings()
+export const modifierParametres = (input: Prisma.SiteSettingsUpdateInput) =>
+  adminRepository.updateSiteSettings(input)

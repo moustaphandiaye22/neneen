@@ -323,3 +323,30 @@ model AuditLog {
 
   @@index([createdAt])
 }
+
+model SiteSettings {
+  id            String   @id
+  siteName      String   @default("neneen")
+  slogan        String   @default("Les rencontres changent tout.")
+  contactEmail  String   @default("")
+  contactPhone  String   @default("")
+  whatsapp      String   @default("")
+  address       String   @default("Dakar, Sénégal")
+  instagramUrl  String   @default("")
+  facebookUrl   String   @default("")
+  paymentsLive  Boolean  @default(false)
+  updatedAt     DateTime @updatedAt
+}
+
+model ProductColorOption {
+  id        String   @id @default(cuid())
+  label     String   @unique
+  createdAt DateTime @default(now())
+}
+
+model ProductSizeOption {
+  id        String   @id @default(cuid())
+  label     String   @unique
+  position  Int      @default(0)
+  createdAt DateTime @default(now())
+}

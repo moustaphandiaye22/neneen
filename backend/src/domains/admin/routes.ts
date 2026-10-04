@@ -31,6 +31,25 @@ adminRouter.get('/audit-logs', requireAdmin, async (_req, res) =>
 adminRouter.get('/dashboard', async (_req, res) =>
   res.json(await adminService.obtenirTableauDeBord()),
 )
+adminRouter.get('/settings', requireAdmin, async (_req, res) =>
+  res.json({ settings: await adminService.obtenirParametres() }),
+)
+adminRouter.patch('/settings', requireAdmin, async (req, res) => {
+  const input = z
+    .object({
+      siteName: z.string().trim().min(1).max(80),
+      slogan: z.string().trim().max(160),
+      contactEmail: z.string().trim().email().or(z.literal('')),
+      contactPhone: z.string().trim().max(40),
+      whatsapp: z.string().trim().max(40),
+      address: z.string().trim().max(160),
+      instagramUrl: z.string().trim().url().or(z.literal('')),
+      facebookUrl: z.string().trim().url().or(z.literal('')),
+      paymentsLive: z.boolean(),
+    })
+    .parse(req.body)
+  res.json({ settings: await adminService.modifierParametres(input) })
+})
 
 adminRouter.get('/activities', async (_req, res) =>
   res.json({ activities: await adminService.listerActivites() }),
@@ -51,6 +70,10 @@ adminRouter.delete('/activities/:id', async (req, res) => {
 adminRouter.get('/products', async (_req, res) =>
   res.json({ products: await adminService.listerProduits() }),
 )
+adminRouter.get('/product-options', async (_req, res) => {
+  const [colors, sizes] = await adminService.listerOptionsProduit()
+  res.json({ colors, sizes })
+})
 adminRouter.post('/products', async (req, res) =>
   res.status(201).json({ product: await adminService.creerProduit(produitSchema.parse(req.body)) }),
 )
