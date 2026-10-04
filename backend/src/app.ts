@@ -21,6 +21,7 @@ app.disable('x-powered-by')
 app.set('trust proxy', env.TRUST_PROXY_HOPS)
 app.use((_req, res, next) => {
   res.removeHeader('Permissions-Policy')
+  res.removeHeader('Feature-Policy')
   next()
 })
 app.use((req, res, next) => {
@@ -51,6 +52,12 @@ app.use(
     },
   }),
 )
+app.options('*', cors({
+  origin: env.FRONTEND_URL,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true,
+}))
 app.use(
   cors({
     origin: env.FRONTEND_URL,
