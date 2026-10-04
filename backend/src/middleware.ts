@@ -2,7 +2,7 @@ import type { NextFunction, Request, Response } from 'express'
 import jwt from 'jsonwebtoken'
 import { Role } from '@prisma/client'
 import { env } from './config.js'
-import { authRepository } from './repositories/authRepository.js'
+import { authRepository } from './domains/auth/authRepository.js'
 
 export async function requireAuth(req: Request, res: Response, next: NextFunction) {
   const match = req.headers.authorization?.match(/^Bearer (\S+)$/)

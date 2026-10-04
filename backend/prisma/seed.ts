@@ -31,9 +31,9 @@ async function main() {
     {
       id: 'seed-afterwork',
       type: 'AFTERWORK' as const,
-      title: 'Afterwork rooftop',
+      title: 'Rencontre sur un toit-terrasse',
       description: 'Rencontres, musique et cocktails pour finir la journée ensemble.',
-      location: 'Rooftop, Almadies',
+      location: 'Toit-terrasse, Almadies',
       duration: '3 h, de 18 h 30 à 21 h 30',
       schedule: [
         '18 h 30 : accueil et boisson de bienvenue',
@@ -89,7 +89,7 @@ async function main() {
     {
       id: 'seed-afterwork-games',
       type: 'AFTERWORK' as const,
-      title: 'Afterwork jeux de société',
+      title: 'Soirée jeux de société',
       description: 'Une soirée conviviale autour de jeux pour briser la glace.',
       location: 'Bar Le Dé, Mermoz',
       duration: '3 h, de 19 h à 22 h',
@@ -183,7 +183,7 @@ async function main() {
   }
   for (const [id, label] of [
     ['EXCURSION', 'Excursion'],
-    ['AFTERWORK', 'Afterwork'],
+    ['AFTERWORK', 'Soirée après le travail'],
     ['EVENT', 'Événement'],
   ])
     await prisma.activityCategory.upsert({

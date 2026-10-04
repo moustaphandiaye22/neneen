@@ -1,9 +1,22 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { formatMoney } from '@neneen/contracts'
-import { AccountForms } from './components/AccountForms'
-import { initiatePayment, listPayments, type Payment } from './services/paymentService'
-import { mergeCart, saveCart } from './services/cartService'
+import { AuthPage } from './features/auth/AuthPage'
+import { SiteFooter } from './components/layout/SiteFooter'
+import { SiteHeader } from './components/layout/SiteHeader'
+import { FeedbackBanners } from './components/layout/FeedbackBanners'
+import { HomePage } from './features/home/HomePage'
+import { ShopPage } from './features/shop/ShopPage'
+import { ProductCard } from './features/shop/ProductCard'
+import { useCart } from './features/shop/useCart'
+import { stockForSize } from './features/shop/stock'
+import { ActivitiesPage } from './features/activities/ActivitiesPage'
+import { CalendarPage } from './features/activities/CalendarPage'
+import {
+  getPaymentConfig,
+  initiatePayment,
+  listPayments,
+  type Payment,
+} from './services/paymentService'
 import {
   forgotPassword,
   resetPassword,
@@ -15,21 +28,10 @@ import {
   resendVerification,
 } from './services/authService'
 import { cancelBooking, joinWaitlist, getTicket } from './services/accountService'
-import { getContent, subscribeNewsletter } from './services/contentService'
+import { getContent } from './services/contentService'
+import { apiUrl } from './services/api'
 import { uploadImage } from './services/uploadService'
-import {
-  ArrowDownRight,
-  ArrowRight,
-  CalendarDays,
-  Check,
-  CircleUserRound,
-  MapPin,
-  Menu,
-  Minus,
-  Plus,
-  ShoppingBag,
-  X,
-} from 'lucide-react'
+import { ArrowRight, CircleUserRound, Minus, Plus, ShoppingBag, X } from 'lucide-react'
 import type { SyntheticEvent } from 'react'
 import {
   annulerActivite,
@@ -53,51 +55,20 @@ import { listerActivites, reserverActivite } from './services/activityService'
 import { chargerEspaceClient } from './services/accountService'
 import { envoyerMessage } from './services/contactService'
 import { listerProduits, passerCommande } from './services/shopService'
-import type { Activity, CartLine, Product, Row, User } from './types'
-import './App.css'
+import type { Activity, Product, Row, User } from './types'
+import {
+  dateLabel,
+  money,
+  pageTitle,
+  paymentMethodLabel,
+  photos,
+  stateLabel,
+  typeLabel,
+} from './lib/presentation'
 import './site.css'
 
 const whatsappNumber = (import.meta.env.VITE_WHATSAPP_NUMBER || '').replace(/\D/g, '')
 const contactEmail = import.meta.env.VITE_CONTACT_EMAIL || ''
-const photos: Record<string, string> = {
-  EXCURSION:
-    'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1400&q=85',
-  AFTERWORK:
-    'https://images.unsplash.com/photo-1519671482749-fd09be7ccebf?auto=format&fit=crop&w=1400&q=85',
-  EVENT:
-    'https://images.unsplash.com/photo-1511795409834-ef04bbd61622?auto=format&fit=crop&w=1400&q=85',
-}
-const money = formatMoney
-const stockForSize = (product: Product, size: string) =>
-  product.variants?.find((variant) => variant.size === size)?.stock ?? product.stock
-const dateLabel = (value: string) =>
-  new Intl.DateTimeFormat('fr-FR', {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-    timeZone: 'Africa/Dakar',
-  }).format(new Date(value))
-const typeLabel = (type: string) =>
-  ({ EXCURSION: 'Excursion', AFTERWORK: 'Afterwork', EVENT: 'Événement' })[type] || type
-const stateLabel = (value: unknown) =>
-  ({
-    PENDING: 'En attente',
-    PAID: 'Payée',
-    SUCCEEDED: 'Payé',
-    FAILED: 'Échec',
-    REFUND_PENDING: 'Remboursement en cours',
-    REFUNDED: 'Remboursé',
-    CONFIRMED: 'Confirmée',
-    PROCESSING: 'En préparation',
-    SHIPPED: 'Expédiée',
-    COMPLETED: 'Terminée',
-    CANCELLED: 'Annulée',
-    NEW: 'Nouveau',
-    READ: 'Lu',
-    REPLIED: 'Répondu',
-    PUBLISHED: 'Publié',
-    DRAFT: 'Brouillon',
-  })[String(value)] || String(value)
 
 function App() {
   const [route, setRoute] = useState(location.hash.slice(1) || '/')
@@ -110,15 +81,6 @@ function App() {
     }
   })
   const [accountLoadedToken, setAccountLoadedToken] = useState<string | null>(null)
-  const [cartSynced, setCartSynced] = useState(false)
-  const cartHydrationStarted = useRef(false)
-  const [cart, setCart] = useState<CartLine[]>(() => {
-    try {
-      return JSON.parse(localStorage.getItem('neneen_cart') || '[]') as CartLine[]
-    } catch {
-      return []
-    }
-  })
   const [bookings, setBookings] = useState<Row[]>([])
   const [orders, setOrders] = useState<Row[]>([])
   const [payments, setPayments] = useState<Payment[]>([])
@@ -153,8 +115,7 @@ function App() {
   }, [])
   useEffect(() => {
     window.scrollTo(0, 0)
-    const title = route === '/' ? 'Accueil' : route.split('/')[1]?.replace(/-/g, ' ') || 'neneen'
-    document.title = `${title} | neneen · Dakar`
+    document.title = `${pageTitle(route)} | neneen · Dakar`
   }, [route])
   const catalog = useQuery({
     queryKey: ['catalog'],
@@ -163,6 +124,15 @@ function App() {
   const activities: Activity[] = catalog.data?.[0] ?? []
   const products: Product[] = catalog.data?.[1] ?? []
   const catalogLoading = catalog.isPending
+  const {
+    cart,
+    setCart,
+    changeCart,
+    resetSync,
+    clearCart,
+    total: cartTotal,
+    count: cartCount,
+  } = useCart(token, catalog.data?.[1], setError)
   useEffect(() => {
     const updateSession = () => {
       setToken(localStorage.getItem('neneen_token'))
@@ -176,46 +146,8 @@ function App() {
     return () => removeEventListener('neneen-session', updateSession)
   }, [])
   useEffect(() => {
-    localStorage.setItem('neneen_cart', JSON.stringify(cart))
-    if (!token || !cartSynced) return
-    const timer = setTimeout(() => {
-      void saveCart(token, cart).catch(() => undefined)
-    }, 500)
-    return () => clearTimeout(timer)
-  }, [cart, token, cartSynced])
-  useEffect(() => {
-    if (!token || !catalog.data || cartSynced || cartHydrationStarted.current) return
-    cartHydrationStarted.current = true
-    void mergeCart(token, cart)
-      .then(({ cart: stored }) => {
-        setCart(
-          stored.items.flatMap((line) => {
-            const product = catalog.data[1].find((item) => item.id === line.productId)
-            return product
-              ? [
-                  {
-                    productId: line.productId,
-                    size: line.size,
-                    quantity: line.quantity,
-                    name: product.name,
-                    color: product.color,
-                    price: product.price,
-                  },
-                ]
-              : []
-          }),
-        )
-        setCartSynced(true)
-      })
-      .catch((reason) => {
-        cartHydrationStarted.current = false
-        setError((reason as Error).message)
-      })
-  }, [token, catalog.data, cartSynced, cart])
-  useEffect(() => {
-    fetch((import.meta.env.VITE_API_URL || 'http://localhost:4000/api') + '/payments/config')
-      .then((response) => response.json())
-      .then((result: { enabled: boolean }) => setPaymentEnabled(result.enabled))
+    getPaymentConfig()
+      .then((result) => setPaymentEnabled(result.enabled))
       .catch(() => undefined)
   }, [])
   useEffect(() => {
@@ -280,8 +212,7 @@ function App() {
     setUser(result.user)
     const nextRoute = sessionStorage.getItem('neneen_after_login') || '/account'
     sessionStorage.removeItem('neneen_after_login')
-    cartHydrationStarted.current = false
-    setCartSynced(false)
+    resetSync()
     location.hash = nextRoute
   }
 
@@ -291,43 +222,13 @@ function App() {
     localStorage.removeItem('neneen_user')
     setToken(null)
     setUser(null)
-    cartHydrationStarted.current = false
-    setCartSynced(false)
-    setCart([])
+    clearCart()
     location.hash = '/'
   }
 
-  function changeCart(product: Product, size: string, delta: number) {
-    setCart((current) => {
-      const line = current.find((item) => item.productId === product.id && item.size === size)
-      if (line)
-        return current
-          .map((item) =>
-            item === line
-              ? {
-                  ...item,
-                  quantity: Math.min(
-                    stockForSize(product, size),
-                    Math.max(0, item.quantity + delta),
-                  ),
-                }
-              : item,
-          )
-          .filter((item) => item.quantity > 0)
-      return delta > 0 && stockForSize(product, size) > 0
-        ? [
-            ...current,
-            {
-              productId: product.id,
-              name: product.name,
-              color: product.color,
-              price: product.price,
-              size,
-              quantity: 1,
-            },
-          ]
-        : current
-    })
+  function selectProduct(product: Product) {
+    setSelectedProduct(product)
+    setSelectedSize(product.sizes[0] || 'M')
   }
 
   async function adminStatus(action: (sessionToken: string) => Promise<unknown>) {
@@ -351,86 +252,6 @@ function App() {
     parts[0] === 'activity' ? activities.find((item) => item.id === parts[1]) : undefined
   const detailProduct =
     parts[0] === 'product' ? products.find((item) => item.id === parts[1]) : undefined
-  const cartTotal = cart.reduce((total, item) => total + item.price * item.quantity, 0)
-  const cartCount = cart.reduce((total, item) => total + item.quantity, 0)
-
-  function activityCard(activity: Activity, index: number) {
-    return (
-      <article
-        className="activity-card"
-        key={activity.id}
-        style={{ animationDelay: `${index * 70}ms` }}
-      >
-        <a
-          className="activity-image"
-          href={`#/activity/${activity.id}`}
-          style={{ backgroundImage: `url(${activity.imageUrl || photos[activity.type]})` }}
-        >
-          <span className="eyebrow light">{typeLabel(activity.type)}</span>
-          <ArrowDownRight className="image-arrow" size={19} />
-        </a>
-        <div className="activity-copy">
-          <div className="activity-meta">
-            <span>
-              <CalendarDays size={14} />
-              {dateLabel(activity.startsAt)}
-            </span>
-            <span>
-              <MapPin size={14} />
-              {activity.location}
-            </span>
-          </div>
-          <a className="title-link" href={`#/activity/${activity.id}`}>
-            {activity.title}
-          </a>
-          <p>{activity.description}</p>
-          <div className="activity-bottom">
-            <strong>
-              {money(activity.price)}
-              <small>/ personne</small>
-            </strong>
-            <a className="text-action" href={`#/booking/${activity.id}`}>
-              Réserver <ArrowRight size={16} />
-            </a>
-          </div>
-        </div>
-      </article>
-    )
-  }
-
-  function productCard(product: Product) {
-    return (
-      <article className="product-card" key={product.id}>
-        <button
-          className={`product-image tone-${product.color.toLowerCase().replace(/[^a-z]/g, '')}`}
-          onClick={() => {
-            setSelectedProduct(product)
-            setSelectedSize(product.sizes[0] || 'M')
-          }}
-          style={product.imageUrl ? { backgroundImage: `url(${product.imageUrl})` } : undefined}
-          aria-label={`Choisir ${product.name} ${product.color}`}
-        >
-          <span className="product-mark">n.</span>
-          <span className="product-add">
-            <Plus size={18} />
-          </span>
-        </button>
-        <div className="product-info">
-          <div>
-            <span className="eyebrow">Build Different</span>
-            <h3>{product.name}</h3>
-            <span className="muted">
-              {product.color} · {product.stock} disponibles
-            </span>
-            <a className="text-action product-details-link" href={`#/product/${product.id}`}>
-              Voir la fiche <ArrowRight size={14} />
-            </a>
-          </div>
-          <strong>{money(product.price)}</strong>
-        </div>
-      </article>
-    )
-  }
 
   function adminView() {
     const tabs = [
@@ -455,7 +276,7 @@ function App() {
       customers: 'Clients',
       messages: 'Messages',
       content: 'Contenus',
-      'check-in': 'Check-in',
+      'check-in': 'Contrôle des entrées',
     }
     const stats: Array<[string, string | number | undefined]> = [
       ['Membres', adminData.customers as number | undefined],
@@ -639,7 +460,7 @@ function App() {
                       Type
                       <select name="type" defaultValue={editActivity?.type || 'EXCURSION'}>
                         <option value="EXCURSION">Excursion</option>
-                        <option value="AFTERWORK">Afterwork</option>
+                        <option value="AFTERWORK">Soirée après le travail</option>
                         <option value="EVENT">Événement</option>
                       </select>
                     </label>
@@ -1077,7 +898,7 @@ function App() {
                         <tr key={String(item.id)}>
                           <td>{String((item.user as Row)?.email)}</td>
                           <td>{money(Number(item.amount))}</td>
-                          <td>{String(item.method)}</td>
+                          <td>{paymentMethodLabel(String(item.method))}</td>
                           <td>{stateLabel(item.status)}</td>
                           <td>
                             {String(item.status) === 'REFUND_PENDING' && (
@@ -1150,8 +971,8 @@ function App() {
                                 }
                               >
                                 <option value="CUSTOMER">Client</option>
-                                <option value="STAFF">Staff</option>
-                                <option value="ADMIN">Admin</option>
+                                <option value="STAFF">Équipe</option>
+                                <option value="ADMIN">Administrateur</option>
                               </select>
                             ) : (
                               stateLabel(item.role)
@@ -1271,266 +1092,46 @@ function App() {
 
   return (
     <div className="site-shell">
-      <div className="announcement">
-        <span>Dakar, Sénégal</span>
-        <span>Les rencontres changent tout.</span>
-        <a href="#/activities">
-          Découvrir le programme <ArrowRight size={13} />
-        </a>
-      </div>
-      <header className="site-header">
-        <a className="wordmark" href="#/">
-          neneen<span>.</span>
-        </a>
-        <button
-          className="mobile-menu-button"
-          aria-label="Menu"
-          onClick={() => setMenuOpen(!menuOpen)}
-        >
-          {menuOpen ? <X /> : <Menu />}
-        </button>
-        <nav className={menuOpen ? 'main-nav is-open' : 'main-nav'}>
-          <a href="#/activities">Les sorties</a>
-          <a href="#/calendar">Calendrier</a>
-          <a href="#/shop">La boutique</a>
-          <a href="#/about">À propos</a>
-          {user && ['ADMIN', 'STAFF'].includes(user.role) && <a href="#/admin">Administration</a>}
-        </nav>
-        <div className="header-actions">
-          <a className="account-link" href={user ? '#/account' : '#/login'}>
-            <CircleUserRound size={17} />
-            <span>{user?.firstName || 'Mon compte'}</span>
-          </a>
-          <a className="bag-link" href="#/cart" aria-label={`Panier, ${cartCount} articles`}>
-            <ShoppingBag size={18} />
-            <span>{cartCount}</span>
-          </a>
-        </div>
-      </header>
-      {notice && (
-        <div className="notice" role="status">
-          <Check size={16} />
-          {notice}
-          <button onClick={() => setNotice('')} aria-label="Fermer">
-            <X size={14} />
-          </button>
-        </div>
-      )}
-      {(error || catalog.error) && (
-        <div className="error-banner" role="alert">
-          {error || catalog.error?.message}
-          <button onClick={() => setError('')} aria-label="Fermer">
-            <X size={14} />
-          </button>
-        </div>
-      )}
+      <SiteHeader
+        userName={user?.firstName}
+        isStaff={Boolean(user && ['ADMIN', 'STAFF'].includes(user.role))}
+        cartCount={cartCount}
+        menuOpen={menuOpen}
+        onMenuToggle={() => setMenuOpen((open) => !open)}
+      />
+      <FeedbackBanners
+        notice={notice}
+        error={error}
+        catalogError={catalog.error}
+        onDismissNotice={() => setNotice('')}
+        onDismissError={() => setError('')}
+      />
 
       {route === '/' && (
-        <main>
-          <section className="hero-section">
-            <div className="hero-image" />
-            <div className="hero-content">
-              <span className="eyebrow light">Dakar · Sénégal · Ensemble</span>
-              <h1>
-                La vie est plus belle <em>à plusieurs.</em>
-              </h1>
-              <p>
-                Des sorties qui rapprochent, des histoires qui restent. Trouvez votre prochain
-                rendez-vous avec neneen.
-              </p>
-              <div className="hero-actions">
-                <a className="button button-light" href="#/activities">
-                  Trouver une sortie <ArrowRight size={17} />
-                </a>
-                <a className="hero-text-link" href="#/shop">
-                  Voir la collection
-                </a>
-              </div>
-            </div>
-            <span className="hero-index">
-              01 <i /> 03
-            </span>
-            <a href="#upcoming" className="hero-scroll">
-              Défiler <ArrowDownRight size={16} />
-            </a>
-          </section>
-          <section className="intro-strip">
-            <span className="eyebrow">Notre promesse</span>
-            <p>
-              Des expériences pensées avec soin, au rythme de Dakar, pour faire de nouvelles
-              rencontres.
-            </p>
-            <a href="#/contact">
-              En savoir plus <ArrowRight size={15} />
-            </a>
-          </section>
-          <section className="content-section" id="upcoming">
-            <div className="section-heading">
-              <div>
-                <span className="eyebrow">Le prochain rendez-vous</span>
-                <h2>
-                  À vivre bientôt<span className="dot">.</span>
-                </h2>
-              </div>
-              <a className="text-action" href="#/activities">
-                Tout le programme <ArrowRight size={16} />
-              </a>
-            </div>
-            {catalogLoading ? (
-              <div className="loading-state" role="status">
-                Les prochaines sorties arrivent…
-              </div>
-            ) : (
-              <div className="activity-grid">
-                {[...activities]
-                  .sort((a, b) => Number(Boolean(b.featured)) - Number(Boolean(a.featured)))
-                  .slice(0, 3)
-                  .map(activityCard)}
-              </div>
-            )}
-            {activities.length === 0 && (
-              <div className="empty-state">Les prochaines sorties arrivent bientôt.</div>
-            )}
-          </section>
-          <section className="editorial-section">
-            <div className="editorial-copy">
-              <span className="eyebrow">Se rencontrer autrement</span>
-              <h2>
-                Un agenda ouvert.
-                <br />
-                <em>Des liens bien réels.</em>
-              </h2>
-              <p>
-                Une excursion au grand air, un afterwork sans pression ou une belle soirée à
-                célébrer. Choisissez l’ambiance, on s’occupe du reste.
-              </p>
-              <a className="button button-dark" href="#/activities">
-                Explorer les sorties <ArrowRight size={17} />
-              </a>
-            </div>
-            <div className="editorial-photo" />
-          </section>
-          <section className="content-section shop-preview">
-            <div className="section-heading">
-              <div>
-                <span className="eyebrow">À porter au quotidien</span>
-                <h2>
-                  La collection neneen<span className="dot">.</span>
-                </h2>
-              </div>
-              <a className="text-action" href="#/shop">
-                Toute la boutique <ArrowRight size={16} />
-              </a>
-            </div>
-            <div className="product-grid">{products.slice(0, 3).map(productCard)}</div>
-          </section>
-        </main>
+        <HomePage
+          activities={activities}
+          products={products}
+          loading={catalogLoading}
+          onProductSelect={selectProduct}
+        />
       )}
 
       {route === '/activities' && (
-        <main className="page-content">
-          <div className="page-intro">
-            <span className="eyebrow">Le calendrier neneen</span>
-            <h1>
-              On se retrouve <em>bientôt.</em>
-            </h1>
-            <p>Choisissez votre prochaine expérience au départ de Dakar.</p>
-          </div>
-          <div className="filter-row">
-            {[
-              ['ALL', 'Tout'],
-              ['EXCURSION', 'Excursions'],
-              ['AFTERWORK', 'Afterworks'],
-              ['EVENT', 'Événements'],
-            ].map(([value, label]) => (
-              <button
-                className={activityFilter === value ? 'filter-button active' : 'filter-button'}
-                key={value}
-                onClick={() => setActivityFilter(value)}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-          {catalogLoading ? (
-            <div className="loading-state" role="status">
-              Chargement du programme…
-            </div>
-          ) : (
-            <div className="activity-grid">
-              {activities
-                .filter((item) => activityFilter === 'ALL' || item.type === activityFilter)
-                .map(activityCard)}
-            </div>
-          )}
-          {activities.length === 0 && (
-            <div className="empty-state">Aucune activité publiée pour le moment.</div>
-          )}
-        </main>
+        <ActivitiesPage
+          activities={activities}
+          loading={catalogLoading}
+          activityFilter={activityFilter}
+          setActivityFilter={setActivityFilter}
+        />
       )}
 
       {route === '/calendar' && (
-        <main className="page-content narrow-content">
-          <div className="page-intro">
-            <span className="eyebrow">Les dates à retenir</span>
-            <h1>
-              Le calendrier<span className="dot">.</span>
-            </h1>
-            <p>Un aperçu de nos prochains rendez-vous à Dakar.</p>
-          </div>
-          <div className="filter-row">
-            {[
-              ['ALL', 'Tout'],
-              ['EXCURSION', 'Excursions'],
-              ['AFTERWORK', 'Afterworks'],
-              ['EVENT', 'Événements'],
-            ].map(([value, label]) => (
-              <button
-                className={activityFilter === value ? 'filter-button active' : 'filter-button'}
-                key={value}
-                onClick={() => setActivityFilter(value)}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-          {catalogLoading ? (
-            <div className="loading-state" role="status">
-              Chargement des dates…
-            </div>
-          ) : (
-            <div className="calendar-list">
-              {activities
-                .filter((item) => activityFilter === 'ALL' || item.type === activityFilter)
-                .map((item) => (
-                  <a className="calendar-row" href={`#/activity/${item.id}`} key={item.id}>
-                    <div className="calendar-date">
-                      <span>
-                        {new Intl.DateTimeFormat('fr-FR', { day: '2-digit' }).format(
-                          new Date(item.startsAt),
-                        )}
-                      </span>
-                      <small>
-                        {new Intl.DateTimeFormat('fr-FR', { month: 'short' }).format(
-                          new Date(item.startsAt),
-                        )}
-                      </small>
-                    </div>
-                    <div>
-                      <span className="eyebrow">
-                        {typeLabel(item.type)} · {item.location}
-                      </span>
-                      <h2>{item.title}</h2>
-                    </div>
-                    <ArrowRight size={17} />
-                  </a>
-                ))}
-            </div>
-          )}
-          {activities.length === 0 && (
-            <div className="empty-state">Le calendrier sera bientôt mis à jour.</div>
-          )}
-        </main>
+        <CalendarPage
+          activities={activities}
+          loading={catalogLoading}
+          activityFilter={activityFilter}
+          setActivityFilter={setActivityFilter}
+        />
       )}
 
       {detailActivity && (
@@ -1612,25 +1213,7 @@ function App() {
       )}
 
       {route === '/shop' && (
-        <main className="page-content">
-          <div className="page-intro">
-            <span className="eyebrow">La collection neneen</span>
-            <h1>
-              Build <em>Different.</em>
-            </h1>
-            <p>Des essentiels avec un état d’esprit : construire ce qui nous ressemble.</p>
-          </div>
-          {catalogLoading ? (
-            <div className="loading-state" role="status">
-              Chargement de la collection…
-            </div>
-          ) : (
-            <div className="product-grid">{products.map(productCard)}</div>
-          )}
-          {products.length === 0 && (
-            <div className="empty-state">La collection revient bientôt.</div>
-          )}
-        </main>
+        <ShopPage products={products} loading={catalogLoading} onProductSelect={selectProduct} />
       )}
 
       {detailProduct && (
@@ -1724,7 +1307,9 @@ function App() {
               {products
                 .filter((product) => product.id !== detailProduct.id)
                 .slice(0, 3)
-                .map(productCard)}
+                .map((product) => (
+                  <ProductCard product={product} key={product.id} onSelect={selectProduct} />
+                ))}
             </div>
           </section>
         </main>
@@ -1799,33 +1384,14 @@ function App() {
       )}
 
       {route === '/login' && (
-        <main className="page-content auth-layout">
-          <div className="auth-art">
-            <span className="eyebrow light">neneen · Dakar</span>
-            <p>Les plus beaux souvenirs commencent souvent par un « bonjour ».</p>
-          </div>
-          <section className="auth-panel">
-            <span className="eyebrow">Espace membre</span>
-            <h1>
-              Ravi de vous <em>revoir.</em>
-            </h1>
-            <p>Connectez-vous ou créez votre compte pour réserver une sortie.</p>
-            <AccountForms
-              onSuccess={(result) => {
-                void signIn(result)
-              }}
-              busy={busy}
-              setBusy={setBusy}
-              setError={setError}
-            />
-            <small className="muted">
-              Prénom, nom et téléphone sont nécessaires à la création du compte.
-            </small>
-            <a className="text-action" href="#/forgot-password">
-              Mot de passe oublié ?
-            </a>
-          </section>
-        </main>
+        <AuthPage
+          onSuccess={(result) => {
+            void signIn(result)
+          }}
+          busy={busy}
+          setBusy={setBusy}
+          setError={setError}
+        />
       )}
 
       {route === '/forgot-password' && (
@@ -2310,22 +1876,13 @@ function App() {
                 </span>
                 {payment.status === 'SUCCEEDED' && (
                   <a
-                    href={
-                      (import.meta.env.VITE_API_URL || 'http://localhost:4000/api') +
-                      '/payments/' +
-                      payment.id +
-                      '/receipt.pdf'
-                    }
+                    href={apiUrl('/payments/') + payment.id + '/receipt.pdf'}
                     onClick={(event) => {
                       event.preventDefault()
                       if (!token) return
-                      void fetch(
-                        (import.meta.env.VITE_API_URL || 'http://localhost:4000/api') +
-                          '/payments/' +
-                          payment.id +
-                          '/receipt.pdf',
-                        { headers: { Authorization: `Bearer ${token}` } },
-                      )
+                      void fetch(apiUrl('/payments/') + payment.id + '/receipt.pdf', {
+                        headers: { Authorization: `Bearer ${token}` },
+                      })
                         .then((response) => response.blob())
                         .then((blob) => {
                           const url = URL.createObjectURL(blob)
@@ -2557,61 +2114,7 @@ function App() {
             </a>
           </main>
         )}
-      <footer className="site-footer">
-        <div className="footer-top">
-          <div>
-            <a className="wordmark" href="#/">
-              neneen<span>.</span>
-            </a>
-            <p>
-              Notre style, notre identité.
-              <br />
-              Dakar, Sénégal
-            </p>
-          </div>
-          <div>
-            <span className="eyebrow">Explorer</span>
-            <a href="#/activities">Les sorties</a>
-            <a href="#/calendar">Calendrier</a>
-            <a href="#/shop">La boutique</a>
-            <a href="#/about">À propos</a>
-            <a href="#/contact">Contact</a>
-          </div>
-          <div>
-            <span className="eyebrow">Informations</span>
-            <a href="#/faq">FAQ et annulation</a>
-            <a href="#/cgv">Conditions de vente</a>
-            <a href="#/mentions">Mentions légales</a>
-            {whatsappNumber && (
-              <a href={`https://wa.me/${whatsappNumber}`}>
-                WhatsApp <ArrowRight size={14} />
-              </a>
-            )}
-          </div>
-        </div>
-        <form
-          className="newsletter-form"
-          onSubmit={(event) =>
-            runForm(event, async (data) => {
-              await subscribeNewsletter(String(data.get('email')))
-              setNotice('Inscription à la newsletter enregistrée.')
-            })
-          }
-        >
-          <label className="form-label">
-            Recevoir la newsletter
-            <input type="email" name="email" required />
-          </label>
-          <button className="button button-dark" disabled={busy}>
-            S’inscrire
-          </button>
-        </form>
-        <div className="footer-bottom">
-          <span>© neneen 2026 · Dakar, Sénégal</span>
-          <span>Conçu pour se retrouver.</span>
-          <a href="#/admin">Administration</a>
-        </div>
-      </footer>
+      <SiteFooter />
       {selectedProduct && (
         <div className="modal-backdrop">
           <section

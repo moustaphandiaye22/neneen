@@ -10,6 +10,9 @@ export type Payment = {
   bookingId?: string | null
   orderId?: string | null
 }
+export async function getPaymentConfig() {
+  return api<{ enabled: boolean }>('/payments/config', null)
+}
 export async function initiatePayment(token: string, input: unknown) {
   const result = await api<{ payment: Payment }>('/payments', token, {
     method: 'POST',

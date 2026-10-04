@@ -5,9 +5,9 @@ Application web de sorties et boutique pour neneen, avec un frontend React et un
 ## Organisation
 
 - `frontend/` : React, TypeScript, Vite et interface client / administration.
-- `frontend/src/App.tsx` : composition des écrans et parcours UI; `frontend/src/services/` : accès API, auth, activités, boutique, compte, contact et administration.
-- `backend/src/modules/` : contrôleurs HTTP et règles d’accès des domaines `auth`, `catalog`, `customer` et `admin`.
-- `backend/src/services/` : règles métier et orchestration; `backend/src/repositories/` : opérations Prisma et transactions.
+- `frontend/src/App.tsx` : composition des parcours ; `frontend/src/features/` : pages, cartes et logique propres à l’accueil, aux sorties, à l’authentification et à la boutique ; `frontend/src/components/layout/` : éléments communs comme le footer ; `frontend/src/lib/` : libellés et formatage ; `frontend/src/services/` : accès API.
+- `backend/src/domains/` : fonctionnalités regroupées par domaine (`auth`, `catalog`, `commerce`, `payments`, `content`, `admin`, `notifications`, `uploads`). Chaque domaine conserve ses routes, services, dépôts et providers concernés.
+- `backend/src/config/`, `errors/`, `lib/`, `middleware.ts` : infrastructure commune à tous les domaines.
 - `shared/contracts/` : schémas Zod et messages de validation français utilisés par le frontend et l’API.
 - `backend/prisma/` : schéma de données, migrations versionnées et données de démonstration.
 
@@ -27,6 +27,8 @@ Prérequis : Node.js 22 ou ultérieur, npm et un projet PostgreSQL Neon.
 `ADMIN_EMAIL` et `ADMIN_PASSWORD` sont requis pour provisionner le compte admin au seed. Si ces variables ne sont pas configurées, les données du catalogue sont chargées, mais aucun admin n’est créé.
 
 Le site est servi sur `http://localhost:5173` et l’API sur `http://localhost:4000/api`. Vérifier l’API avec `http://localhost:4000/api/health`.
+
+Avec Docker Compose, le site est disponible sur `http://localhost:5173` et Nginx transmet les appels `/api` au conteneur backend. La base Neon reste externe ; `backend/.env` est injecté au démarrage et n’est pas copié dans les images. Utiliser `docker compose up --build` après avoir configuré ce fichier. La route `http://localhost:5173/api/health` permet de vérifier le chemin complet navigateur → Nginx → API.
 
 Les migrations sont versionnées ; `db:deploy` applique celles qui manquent. L’URL de l’API côté frontend peut être changée dans `frontend/.env` à partir de `frontend/.env.example`.
 

@@ -1,6 +1,6 @@
 import { prisma } from '../lib/prisma.js'
-import { releaseBooking, enqueueNotification } from '../repositories/transactionHelpers.js'
-import { notificationService } from '../services/notificationService.js'
+import { releaseBooking, enqueueNotification } from '../domains/commerce/transactionHelpers.js'
+import { notificationService } from '../domains/notifications/notificationService.js'
 export async function releaseExpiredBookings() {
   const expired = await prisma.booking.findMany({
     where: { status: 'PENDING', expiresAt: { lte: new Date() } },

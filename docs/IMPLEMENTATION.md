@@ -20,6 +20,7 @@
 - Les URLs `#/...` du frontend React sont accessibles dans le navigateur, mais les pages internes ne sont pas pré-rendues pour les moteurs de recherche. Le sitemap statique doit être aligné sur le domaine réellement déployé. Un passage aux vraies routes et au pré-rendu est nécessaire pour un SEO complet.
 - La migration a été vérifiée sur une branche Neon temporaire, puis appliquée avec autorisation à `br-still-violet-b48l84xa` (projet `bold-star-26895357`). Elle est enregistrée dans l’historique Prisma ; `prisma migrate status` confirme que le schéma est à jour.
 - Les tests couvrent les services de domaine ajoutés et les erreurs HTTP ; les parcours complets contre une branche Neon et les prestataires en sandbox restent à exécuter avec leurs accès.
+- L’audit npm signale encore trois alertes « high » dans la chaîne `prisma` → `@prisma/config` → `deepmerge-ts`. La mise à niveau de Prisma et son contrôle de compatibilité restent à planifier ; une compilation et les tests actuels ne prouvent pas l’absence de vulnérabilités.
 
 ## Commandes
 
@@ -42,8 +43,8 @@ Pour `db:deploy`, définir `DIRECT_URL` sur la connexion Neon **directe**, sans 
 
 - `backend/prisma/schema.prisma`, `backend/prisma/migrations/20261004000000_full_spec/migration.sql`, `backend/prisma/seed.ts`
 - `backend/src/app.ts`, `backend/src/index.ts`, `backend/src/config/environment.ts`, `backend/src/middleware.ts`
-- `backend/src/controllers/authController.ts`, `backend/src/errors/*`, `backend/src/jobs/housekeeping.ts`, `backend/src/providers/*`, `backend/src/repositories/*`, `backend/src/services/*`, `backend/src/modules/*`, `backend/src/utils/tokens.ts`
+- `backend/src/domains/*` (routes, services, dépôts et providers regroupés par fonctionnalité), `backend/src/errors/*`, `backend/src/jobs/housekeeping.ts`, `backend/src/utils/tokens.ts`
 - `backend/tests/foundation.test.ts`, `backend/tests/services.test.ts`, `backend/openapi.yaml`, `backend/Dockerfile`, `backend/package.json`
 - `shared/contracts/src/index.ts`
-- `frontend/src/App.tsx`, `frontend/src/main.tsx`, `frontend/src/types.ts`, `frontend/src/components/AccountForms.tsx`, `frontend/src/services/*`, `frontend/index.html`, `frontend/public/robots.txt`, `frontend/public/sitemap.xml`, `frontend/Dockerfile`, `frontend/nginx.conf`, `frontend/.env.example`
+- `frontend/src/App.tsx`, `frontend/src/main.tsx`, `frontend/src/types.ts`, `frontend/src/features/*`, `frontend/src/components/layout/*`, `frontend/src/lib/*`, `frontend/src/services/*`, `frontend/index.html`, `frontend/public/robots.txt`, `frontend/public/sitemap.xml`, `frontend/Dockerfile`, `frontend/nginx.conf`, `frontend/.env.example`
 - `.env.example`, `package.json`, `package-lock.json`, `docker-compose.yml`, `.dockerignore`, `.github/workflows/ci.yml`, `README.md`

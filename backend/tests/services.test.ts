@@ -1,19 +1,19 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { createPaymentService } from '../src/services/paymentService.js'
-import { createAuthService } from '../src/services/authService.js'
-import { createNotificationService } from '../src/services/notificationService.js'
-import { createContentService } from '../src/services/contentService.js'
+import { createPaymentService } from '../src/domains/payments/paymentService.js'
+import { createAuthService } from '../src/domains/auth/authService.js'
+import { createNotificationService } from '../src/domains/notifications/notificationService.js'
+import { createContentService } from '../src/domains/content/contentService.js'
 import {
   assertCancellationAllowed,
   assertOrderTransition,
   mergeCartLines,
-} from '../src/services/commercePolicy.js'
-import type { paymentRepository } from '../src/repositories/paymentRepository.js'
-import type { authRepository } from '../src/repositories/authRepository.js'
-import type { notificationRepository } from '../src/repositories/notificationRepository.js'
-import type { contentRepository } from '../src/repositories/contentRepository.js'
-import type { PaymentProvider } from '../src/providers/paymentProvider.js'
+} from '../src/domains/commerce/commercePolicy.js'
+import type { paymentRepository } from '../src/domains/payments/paymentRepository.js'
+import type { authRepository } from '../src/domains/auth/authRepository.js'
+import type { notificationRepository } from '../src/domains/notifications/notificationRepository.js'
+import type { contentRepository } from '../src/domains/content/contentRepository.js'
+import type { PaymentProvider } from '../src/domains/payments/paymentProvider.js'
 
 test('policy: cancellation boundary, order transitions and cart merge', () => {
   assert.doesNotThrow(() => assertCancellationAllowed(new Date(Date.now() + 8 * 86400000)))

@@ -6,7 +6,7 @@ import {
   produitSchema,
 } from '@neneen/contracts'
 import type { AdminData } from '../types'
-import { api } from './api'
+import { api, apiUrl } from './api'
 import { validerAvec } from './validation'
 
 const adminEndpoints: Record<string, string> = {
@@ -83,11 +83,9 @@ export const saveContent = (
 export const checkIn = (token: string, secret: string) =>
   api('/admin/check-in', token, { method: 'POST', body: JSON.stringify({ secret }) })
 export const participantsCsv = async (token: string, activityId: string) => {
-  const response = await fetch(
-    (import.meta.env.VITE_API_URL || 'http://localhost:4000/api') +
-      `/admin/activities/${activityId}/participants.csv`,
-    { headers: { Authorization: `Bearer ${token}` } },
-  )
+  const response = await fetch(apiUrl(`/admin/activities/${activityId}/participants.csv`), {
+    headers: { Authorization: `Bearer ${token}` },
+  })
   if (!response.ok) throw new Error('Export impossible.')
   const blob = await response.blob()
   const url = URL.createObjectURL(blob)
