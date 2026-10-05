@@ -97,9 +97,10 @@ n’est lancé. Vérifier `https://<service>.onrender.com/api/ready` après dép
 ### 2. Frontend sur Vercel
 
 Importer le même dépôt avec **Root Directory = racine du dépôt** et le preset
-**Other**. Conserver les commandes de `vercel.json` ; ne pas imposer `frontend/`
-comme racine et ne pas définir d’Output Directory personnalisé. Choisir Node.js 22.
-Le script produit `.vercel/output` selon la Build Output API officielle.
+**Other**. `vercel.json` lance `node scripts/build-vercel.mjs` ; ne pas imposer
+`frontend/` comme racine, remplacer la commande de build ni définir d’Output
+Directory personnalisé. Choisir Node.js 22. Le script produit `.vercel/output`
+selon la Build Output API officielle et configure le proxy API vers Render.
 
 Configurer les variables Vercel avant le build :
 
