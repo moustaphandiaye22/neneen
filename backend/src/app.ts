@@ -53,7 +53,7 @@ app.use(
   }),
 )
 app.options(
-  '*',
+  '/{*path}',
   cors({
     origin: env.FRONTEND_URL,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
